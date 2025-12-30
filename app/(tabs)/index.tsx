@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -35,8 +36,12 @@ export default function App() {
   ];
 
   const handleComponentPress = (route: string) => {
-    // Navigation will be implemented when components are ready
-    console.log(`Navigating to: ${route}`);
+    if (route === 'sound-alert') {
+      router.push('/sound-alert');
+    } else {
+      // Placeholder for other components
+      console.log(`Navigating to: ${route}`);
+    }
   };
 
   return (
