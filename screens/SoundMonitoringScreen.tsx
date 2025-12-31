@@ -49,17 +49,6 @@ export default function SoundMonitoringScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#00BCD4']} />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Sound Monitor</Text>
-          <TouchableOpacity style={styles.notificationBadge}>
-            <Ionicons name="notifications" size={24} color="#333" />
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{alerts.length}</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
         {/* Monitoring Status */}
         <MonitoringStatusCard isActive={isMonitoring} onToggle={toggleMonitoring} />
 
@@ -165,7 +154,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 50,
     paddingBottom: 10,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: 'white',
   },
   headerTitle: {
     fontSize: 24,
