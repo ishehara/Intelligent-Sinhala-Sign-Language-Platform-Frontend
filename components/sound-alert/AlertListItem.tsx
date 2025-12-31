@@ -1,17 +1,18 @@
 import { Alert } from '@/types/sound-alert';
 import { getSeverityColor, getTimeAgo } from '@/utils/sound-alert-utils';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface AlertListItemProps {
   alert: Alert;
+  onPress: () => void;
 }
 
-export const AlertListItem: React.FC<AlertListItemProps> = ({ alert }) => {
+export const AlertListItem: React.FC<AlertListItemProps> = ({ alert, onPress }) => {
   const severityColor = getSeverityColor(alert.severity);
   
   return (
-    <View style={styles.container}>
+    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.iconContainer}>
         <Text style={styles.icon}>{alert.icon}</Text>
       </View>
@@ -22,7 +23,7 @@ export const AlertListItem: React.FC<AlertListItemProps> = ({ alert }) => {
       </View>
       
       <View style={[styles.indicator, { backgroundColor: severityColor }]} />
-    </View>
+    </TouchableOpacity>
   );
 };
 

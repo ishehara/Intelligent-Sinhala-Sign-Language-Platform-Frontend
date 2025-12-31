@@ -1,3 +1,4 @@
+import { AlertDetailsModal } from '@/components/sound-alert/AlertDetailsModal';
 import { AlertListItem } from '@/components/sound-alert/AlertListItem';
 import { MonitoringStatusCard } from '@/components/sound-alert/MonitoringStatusCard';
 import { StatsCard } from '@/components/sound-alert/StatsCard';
@@ -12,6 +13,8 @@ export default function SoundMonitoringScreen() {
   const [alerts, setAlerts] = useState<Alert[]>(mockAlerts);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'all' | AlertSeverity>('all');
+  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -23,6 +26,16 @@ export default function SoundMonitoringScreen() {
   const toggleMonitoring = () => {
     Vibration.vibrate(50);
     setIsMonitoring(!isMonitoring);
+  };
+
+  const handleAlertPress = (alert: Alert) => {
+    setSelectedAlert(alert);
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+    setSelectedAlert(null);
   };
 
   const filteredAlerts = selectedFilter === 'all' 
@@ -104,7 +117,7 @@ export default function SoundMonitoringScreen() {
           </View>
           {filteredAlerts.length > 0 ? (
             filteredAlerts.map((alert) => (
-              <AlertListItem key={alert.id} alert={alert} />
+              <AlertListItem key={alert.id} alert={alert} onPress={() => handleAlertPress(alert)} />
             ))
           ) : (
             <View style={styles.emptyState}>
@@ -138,6 +151,13 @@ export default function SoundMonitoringScreen() {
           <Text style={[styles.navText, styles.navTextInactive]}>Profile</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Alert Details Modal */}
+      <AlertDetailsModal 
+        visible={modalVisible}
+        alert={selectedAlert}
+        onClose={closeModal}
+      />
     </View>
   );
 }
