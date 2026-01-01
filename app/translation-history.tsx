@@ -6,7 +6,16 @@ export default function TranslationHistoryPage() {
     <>
       <Stack.Screen
         options={{
-          headerShown: false,
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: '#00BCD4',
+          },
+          headerTintColor: 'white',
+          headerTitle: 'Translation History',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          headerBackVisible: false,
         }}
       />
       <TranslationHistoryScreen />

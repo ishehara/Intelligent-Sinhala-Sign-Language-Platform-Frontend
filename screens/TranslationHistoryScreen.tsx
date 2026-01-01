@@ -58,11 +58,6 @@ export default function TranslationHistoryScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Translation History</Text>
-      </View>
-
       {/* History List */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {todayItems.length > 0 && (
