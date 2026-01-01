@@ -1,5 +1,7 @@
 import SoundMonitoringScreen from '@/screens/SoundMonitoringScreen';
-import { Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { router, Stack } from 'expo-router';
+import { TouchableOpacity } from 'react-native';
 
 export default function SoundAlertPage() {
   return (
@@ -10,7 +12,15 @@ export default function SoundAlertPage() {
             backgroundColor: 'white',
           },
           headerTintColor: '#333',
-          headerTitle: 'sound-alert',
+          headerTitle: 'Environmental Sound Alert',
+          headerLeft: () => (
+            <TouchableOpacity 
+              onPress={() => router.push('/(tabs)' as any)}
+              style={{ marginLeft: 8 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#333" />
+            </TouchableOpacity>
+          ),
         }} 
       />
       <SoundMonitoringScreen />

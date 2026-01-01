@@ -8,8 +8,7 @@ export const SoundAlertBottomNav: React.FC = () => {
     if (route === 'sound-alert') {
       router.push('../../sound-alert' as any);
     } else if (route === 'history') {
-      // TODO: Add sound alert history route when implemented
-      console.log('Navigate to sound alert history');
+      router.push('../../alert-history' as any);
     }
   };
 
