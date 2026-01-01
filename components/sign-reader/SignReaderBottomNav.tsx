@@ -1,16 +1,31 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export const SignReaderBottomNav: React.FC = () => {
+  const handleNavigation = (route: string) => {
+    if (route === 'sign-reader') {
+      router.push('../../sign-reader' as any);
+    } else if (route === 'history') {
+      router.push('../../translation-history' as any);
+    }
+  };
+
   return (
     <View style={styles.bottomNav}>
-      <TouchableOpacity style={styles.navItem}>
+      <TouchableOpacity 
+        style={styles.navItem}
+        onPress={() => handleNavigation('sign-reader')}
+      >
         <Ionicons name="home" size={24} color="#00BCD4" />
         <Text style={styles.navText}>Home</Text>
       </TouchableOpacity>
       
-      <TouchableOpacity style={styles.navItem}>
+      <TouchableOpacity 
+        style={styles.navItem}
+        onPress={() => handleNavigation('history')}
+      >
         <Ionicons name="time" size={24} color="#999" />
         <Text style={[styles.navText, styles.navTextInactive]}>History</Text>
       </TouchableOpacity>
