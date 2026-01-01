@@ -1,6 +1,7 @@
 import { AlertDetailsModal } from '@/components/sound-alert/AlertDetailsModal';
 import { AlertListItem } from '@/components/sound-alert/AlertListItem';
 import { MonitoringStatusCard } from '@/components/sound-alert/MonitoringStatusCard';
+import { SoundAlertBottomNav } from '@/components/sound-alert/SoundAlertBottomNav';
 import { StatsCard } from '@/components/sound-alert/StatsCard';
 import { Alert, AlertSeverity, MonitoringStats } from '@/types/sound-alert';
 import { getTimeAgo, mockAlerts } from '@/utils/sound-alert-utils';
@@ -130,27 +131,7 @@ export default function SoundMonitoringScreen() {
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="home" size={24} color="#00BCD4" />
-          <Text style={styles.navText}>Home</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="time" size={24} color="#999" />
-          <Text style={[styles.navText, styles.navTextInactive]}>History</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="settings" size={24} color="#999" />
-          <Text style={[styles.navText, styles.navTextInactive]}>Settings</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="person" size={24} color="#999" />
-          <Text style={[styles.navText, styles.navTextInactive]}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      <SoundAlertBottomNav />
 
       {/* Alert Details Modal */}
       <AlertDetailsModal 
@@ -278,18 +259,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 10,
-  },
-  navItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navText: {
-    fontSize: 12,
-    color: '#00BCD4',
-    marginTop: 4,
-  },
-  navTextInactive: {
-    color: '#999',
   },
 });

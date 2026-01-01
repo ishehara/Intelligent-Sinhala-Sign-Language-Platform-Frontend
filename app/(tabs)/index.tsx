@@ -37,7 +37,9 @@ export default function App() {
 
   const handleComponentPress = (route: string) => {
     if (route === 'sound-alert') {
-      router.push('/sound-alert');
+      router.push('../../sound-alert' as any);
+    } else if (route === 'sign-reader') {
+      router.push('../../sign-reader' as any);
     } else {
       // Placeholder for other components
       console.log(`Navigating to: ${route}`);
