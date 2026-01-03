@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "IntelligentSinhalaSignLanguagePlatformFrontend2",
-    "slug": "IntelligentSinhalaSignLanguagePlatformFrontend2",
+    "name": "HearSense",
+    "slug": "hearsense",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "intelligentsinhalasignlanguageplatformfrontend2",
+    "scheme": "hearsense",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
