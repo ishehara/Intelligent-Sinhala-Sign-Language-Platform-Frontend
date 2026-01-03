@@ -47,7 +47,7 @@ export default function App() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <LinearGradient
-          colors={['#00BCD4', '#008080', '#006666']}
+          colors={['#00A8B5', '#008A95', '#006A75']}
           style={styles.header}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
