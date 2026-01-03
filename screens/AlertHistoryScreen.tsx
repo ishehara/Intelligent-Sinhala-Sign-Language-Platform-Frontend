@@ -191,7 +191,7 @@ export default function AlertHistoryScreen() {
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <SoundAlertBottomNav />
+      <SoundAlertBottomNav activeTab="history" />
     </View>
   );
 }

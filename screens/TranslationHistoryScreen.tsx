@@ -60,6 +60,10 @@ export default function TranslationHistoryScreen() {
     <View style={styles.container}>
       {/* History List */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.titleSection}>
+          <Text style={styles.pageTitle}>Last 7 Days</Text>
+        </View>
+
         {todayItems.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Today</Text>
@@ -83,7 +87,7 @@ export default function TranslationHistoryScreen() {
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <SignReaderBottomNav />
+      <SignReaderBottomNav activeTab="history" />
     </View>
   );
 }
@@ -93,18 +97,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
-  header: {
-    backgroundColor: '#00BCD4',
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+  titleSection: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 10,
   },
-  headerTitle: {
-    fontSize: 24,
+  pageTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
+    color: '#2C3E50',
   },
   scrollView: {
     flex: 1,

@@ -3,7 +3,11 @@ import { router } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export const SoundAlertBottomNav: React.FC = () => {
+interface SoundAlertBottomNavProps {
+  activeTab?: 'home' | 'history' | 'settings' | 'profile';
+}
+
+export const SoundAlertBottomNav: React.FC<SoundAlertBottomNavProps> = ({ activeTab = 'home' }) => {
   const handleNavigation = (route: string) => {
     if (route === 'sound-alert') {
       router.push('../../sound-alert' as any);
@@ -18,16 +22,16 @@ export const SoundAlertBottomNav: React.FC = () => {
         style={styles.navItem}
         onPress={() => handleNavigation('sound-alert')}
       >
-        <Ionicons name="home" size={24} color="#00BCD4" />
-        <Text style={styles.navText}>Home</Text>
+        <Ionicons name="home" size={24} color={activeTab === 'home' ? '#00BCD4' : '#999'} />
+        <Text style={[styles.navText, activeTab !== 'home' && styles.navTextInactive]}>Home</Text>
       </TouchableOpacity>
       
       <TouchableOpacity 
         style={styles.navItem}
         onPress={() => handleNavigation('history')}
       >
-        <Ionicons name="time" size={24} color="#999" />
-        <Text style={[styles.navText, styles.navTextInactive]}>History</Text>
+        <Ionicons name="time" size={24} color={activeTab === 'history' ? '#00BCD4' : '#999'} />
+        <Text style={[styles.navText, activeTab !== 'history' && styles.navTextInactive]}>History</Text>
       </TouchableOpacity>
       
       <TouchableOpacity style={styles.navItem}>

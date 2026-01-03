@@ -3,7 +3,11 @@ import { router } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export const SignReaderBottomNav: React.FC = () => {
+interface SignReaderBottomNavProps {
+  activeTab?: 'home' | 'history' | 'settings' | 'profile';
+}
+
+export const SignReaderBottomNav: React.FC<SignReaderBottomNavProps> = ({ activeTab = 'home' }) => {
   const handleNavigation = (route: string) => {
     if (route === 'sign-reader') {
       router.push('../../sign-reader' as any);
@@ -18,16 +22,16 @@ export const SignReaderBottomNav: React.FC = () => {
         style={styles.navItem}
         onPress={() => handleNavigation('sign-reader')}
       >
-        <Ionicons name="home" size={24} color="#00BCD4" />
-        <Text style={styles.navText}>Home</Text>
+        <Ionicons name="home" size={24} color={activeTab === 'home' ? '#00BCD4' : '#999'} />
+        <Text style={[styles.navText, activeTab !== 'home' && styles.navTextInactive]}>Home</Text>
       </TouchableOpacity>
       
       <TouchableOpacity 
         style={styles.navItem}
         onPress={() => handleNavigation('history')}
       >
-        <Ionicons name="time" size={24} color="#999" />
-        <Text style={[styles.navText, styles.navTextInactive]}>History</Text>
+        <Ionicons name="time" size={24} color={activeTab === 'history' ? '#00BCD4' : '#999'} />
+        <Text style={[styles.navText, activeTab !== 'history' && styles.navTextInactive]}>History</Text>
       </TouchableOpacity>
       
       <TouchableOpacity style={styles.navItem}>

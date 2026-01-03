@@ -8,9 +8,9 @@ export default function TranslationHistoryPage() {
         options={{
           headerShown: true,
           headerStyle: {
-            backgroundColor: '#00BCD4',
+            backgroundColor: 'white',
           },
-          headerTintColor: 'white',
+          headerTintColor: '#2C3E50',
           headerTitle: 'Translation History',
           headerTitleStyle: {
             fontWeight: 'bold',
