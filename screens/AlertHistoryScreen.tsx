@@ -29,11 +29,11 @@ export default function AlertHistoryScreen() {
   ];
 
   const alertTypeFilters = [
-    { key: 'car', label: 'Car', icon: 'car' },
-    { key: 'bus', label: 'Bus', icon: 'bus' },
-    { key: 'train', label: 'Train', icon: 'train' },
-    { key: 'fire', label: 'Fire Alarm', icon: 'flame' },
-    { key: 'siren', label: 'Siren', icon: 'medical' },
+    { key: 'car-horn', label: 'Car', icon: 'car' },
+    { key: 'bus-horn', label: 'Bus', icon: 'bus' },
+    { key: 'train-horn', label: 'Train', icon: 'train' },
+    { key: 'fire-alarm', label: 'Fire Alarm', icon: 'flame' },
+    { key: 'ambulance-siren', label: 'Siren', icon: 'medical' },
   ];
 
   const toggleTypeFilter = (type: string) => {
@@ -45,7 +45,7 @@ export default function AlertHistoryScreen() {
   };
 
   const filteredAlerts = alertHistory.filter(alert => {
-    const typeMatch = selectedTypes.length === 0 || selectedTypes.some(type => alert.icon === type);
+    const typeMatch = selectedTypes.length === 0 || selectedTypes.some(type => alert.type === type);
     const severityMatch = !selectedSeverity || alert.severity === selectedSeverity;
     return typeMatch && severityMatch;
   });
@@ -97,18 +97,18 @@ export default function AlertHistoryScreen() {
                   key={filter.key}
                   style={[
                     styles.typeFilterChip,
-                    selectedTypes.includes(filter.icon) && styles.typeFilterChipActive
+                    selectedTypes.includes(filter.key) && styles.typeFilterChipActive
                   ]}
-                  onPress={() => toggleTypeFilter(filter.icon)}
+                  onPress={() => toggleTypeFilter(filter.key)}
                 >
                   <Ionicons 
                     name={filter.icon as any} 
                     size={18} 
-                    color={selectedTypes.includes(filter.icon) ? 'white' : '#00BCD4'} 
+                    color={selectedTypes.includes(filter.key) ? 'white' : '#00BCD4'} 
                   />
                   <Text style={[
                     styles.typeFilterText,
-                    selectedTypes.includes(filter.icon) && styles.typeFilterTextActive
+                    selectedTypes.includes(filter.key) && styles.typeFilterTextActive
                   ]}>
                     {filter.label}
                   </Text>

@@ -1,7 +1,6 @@
 import { Alert } from '@/types/sound-alert';
 import { getSeverityColor, getTimeAgo } from '@/utils/sound-alert-utils';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -78,28 +77,6 @@ export const AlertDetailsModal: React.FC<AlertDetailsModalProps> = ({ visible, a
             </View>
           </View>
 
-          {/* Action Buttons */}
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity 
-              style={styles.buttonOutline}
-              onPress={() => {
-                onClose();
-                router.push('../../alert-history' as any);
-              }}
-            >
-              <Text style={styles.buttonOutlineText}>View in History</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.buttonFilled}
-              onPress={() => {
-                onClose();
-                // Navigate to settings if needed
-              }}
-            >
-              <Text style={styles.buttonFilledText}>Adjust Settings</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </View>
     </Modal>
