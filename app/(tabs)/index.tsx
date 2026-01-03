@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -35,8 +36,12 @@ export default function App() {
   ];
 
   const handleComponentPress = (route: string) => {
-    // Navigation will be implemented when components are ready
-    console.log(`Navigating to: ${route}`);
+    if (route === 'learning') {
+      router.push('/sign-learning' as any);
+    } else {
+      // Navigation will be implemented when components are ready
+      console.log(`Navigating to: ${route}`);
+    }
   };
 
   return (
@@ -47,7 +52,7 @@ export default function App() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.appName}>HearSense</Text>
-          <Text style={styles.tagline}>Intelligent Sinhala Sign Language Platform</Text>
+          <Text style={styles.tagline}>AI-Powered Sinhala Sign Language Learning</Text>
         </View>
 
         {/* Component Cards */}
