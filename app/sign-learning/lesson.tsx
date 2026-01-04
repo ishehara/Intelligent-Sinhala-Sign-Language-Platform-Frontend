@@ -20,6 +20,7 @@ export default function SignLearningLessonScreen() {
   const [showSkipModal, setShowSkipModal] = useState(false);
   const [difficultyAdjustment, setDifficultyAdjustment] = useState(0);
   const [selectedStrategy, setSelectedStrategy] = useState('More Visual Hints');
+  const [isSinhalaMode, setIsSinhalaMode] = useState(false);
 
   // Current Letter Being Practiced
   const currentLetter = 'ප';
@@ -49,52 +50,56 @@ export default function SignLearningLessonScreen() {
     description: 'Straightforward hand positioning with moderate hand speed',
   };
 
-  // Adaptive lesson path based on performance
+  // Adaptive lesson path based on performance with Sinhala support
   const getAdaptiveLessonPath = () => {
     const perf = letterPerformanceHistory;
     
     if (perf.successRate >= 90) {
       return {
-        stage: 'Mastery',
-        description: 'You\'re doing great! Time to refine your technique.',
-        focus: 'Speed and accuracy',
-        intensity: 'High',
+        stage: isSinhalaMode ? 'පරිපූර්ණතාවය' : 'Mastery',
+        description: isSinhalaMode ? 'ඔබ විශිෂ්ට ඉටුවීමටයි! දැන් ඔබගේ කෞශල පිරිපහදා ගනීම සඳහා නිකම්ම!' : 'You\'re doing great! Time to refine your technique.',
+        focus: isSinhalaMode ? 'ගතිය සහ නිරවද්‍යතාවය' : 'Speed and accuracy',
+        intensity: isSinhalaMode ? 'ඉහළ' : 'High',
       };
     } else if (perf.successRate >= 75) {
       return {
-        stage: 'Consolidation',
-        description: 'Good progress! Focus on consistency.',
-        focus: 'Technique refinement',
-        intensity: 'Medium',
+        stage: isSinhalaMode ? 'ස්මීර්ණකරණය' : 'Consolidation',
+        description: isSinhalaMode ? 'හොඳ දියුණුවක! ස්මීරතාවයට අවධානය දෙන්න.' : 'Good progress! Focus on consistency.',
+        focus: isSinhalaMode ? 'කෞශල පිරිපහසුවීම' : 'Technique refinement',
+        intensity: isSinhalaMode ? 'මධ්‍යම' : 'Medium',
       };
     } else if (perf.consecutiveFailures >= 2) {
       return {
-        stage: 'Remedial',
-        description: 'Let\'s reset and rebuild. Use more visual aids.',
-        focus: 'Fundamental positioning',
-        intensity: 'Low',
+        stage: isSinhalaMode ? 'ප්‍රතිකරණය' : 'Remedial',
+        description: isSinhalaMode ? 'අපි ප්‍රතිකරණ කර ඉහළ ගිය යුතුයි. දෘශ්‍ය සහාය භාවිතා කරමු.' : 'Let\'s reset and rebuild. Use more visual aids.',
+        focus: isSinhalaMode ? 'මූලික පිහිටුවීම' : 'Fundamental positioning',
+        intensity: isSinhalaMode ? 'පහළ' : 'Low',
       };
     } else {
       return {
-        stage: 'Learning',
-        description: 'You\'re learning well! Keep practicing.',
-        focus: 'Core technique',
-        intensity: 'Medium',
+        stage: isSinhalaMode ? 'ඉගෙනීම' : 'Learning',
+        description: isSinhalaMode ? 'ඔබ හොඳින් ඉගෙන ගන්නවා! පුහුණුව කරගෙන යන්න.' : 'You\'re learning well! Keep practicing.',
+        focus: isSinhalaMode ? 'මූලික තාක්‍ෂණය' : 'Core technique',
+        intensity: isSinhalaMode ? 'මධ්‍යම' : 'Medium',
       };
     }
   };
 
-  // Predict next lesson path based on current performance
+  // Predict next lesson path based on current performance with Sinhala support
   const getNextLessonPath = () => {
     const perf = letterPerformanceHistory;
     
     if (perf.successRate >= 90) {
       return {
-        stage: 'Mastery Track',
-        description: `Ready to master ${nextLesson.sinhalaName}! You'll learn advanced variations.`,
-        recommendation: 'Challenge yourself with combined gestures',
-        intensity: 'High',
-        tips: [
+        stage: isSinhalaMode ? 'පරිපූර්ණතා ගමන්' : 'Mastery Track',
+        description: isSinhalaMode ? `${nextLesson.sinhalaName} පරිපූර්ණයෙන් ශිෂ්ඨ කිරීමට සූදානම්! ඔබ උසස ප්‍රභේදයන් ඉගෙන ගනු ඇත.` : `Ready to master ${nextLesson.sinhalaName}! You'll learn advanced variations.`,
+        recommendation: isSinhalaMode ? 'සංයුක්ත ටයුවන සමඟ ඔබ අභිවර්ධනය කරන්න' : 'Challenge yourself with combined gestures',
+        intensity: isSinhalaMode ? 'ඉහළ' : 'High',
+        tips: isSinhalaMode ? [
+          '🎯 නව අකුරු මූලික පිහිටුවීම සමඟ ආරම්භ කරන්න',
+          '⚡ ගතිය සහ ප්‍රවාහතා ප්‍රභේදයන්ට ඉදිරි ගිය යුතුයි',
+          '🔄 කලින් ඉගෙන ගත අකුරු සමඟ සංයුක්ත කරන්න'
+        ] : [
           '🎯 Start with basic positioning of the new letter',
           '⚡ Progress to speed and fluency variations',
           '🔄 Combine with previously learned letters'
@@ -102,11 +107,15 @@ export default function SignLearningLessonScreen() {
       };
     } else if (perf.successRate >= 75) {
       return {
-        stage: 'Standard Track',
-        description: `Build on your progress! ${nextLesson.sinhalaName} is similar in structure.`,
-        recommendation: 'Focus on consistent technique before moving to next letter',
-        intensity: 'Medium',
-        tips: [
+        stage: isSinhalaMode ? 'සම්මත ගමන්' : 'Standard Track',
+        description: isSinhalaMode ? `ඔබගේ ඉදිරි ගිය දියුණුවක් ඉටුවීමටයි! ${nextLesson.sinhalaName} වැඩිපුරේ සමාන වෙයි.` : `Build on your progress! ${nextLesson.sinhalaName} is similar in structure.`,
+        recommendation: isSinhalaMode ? 'ඊට පසු අකුරුට ගිය හෙතින් ස්වභාවික කෞශල වලට අවධානය දෙන්න' : 'Focus on consistent technique before moving to next letter',
+        intensity: isSinhalaMode ? 'මධ්‍යම' : 'Medium',
+        tips: isSinhalaMode ? [
+          '👆 මේ අකුරු සමඟ මාස්පේෂී ස්මරණයි ශක්තිමත් කරන්න',
+          '📈 භ්‍යාස ගතිය ක්‍රමයෙන් වැඩි කරන්න',
+          '✓ ඊට පසු අකුරුට ගිය පෙර පවතින අකුරු 85%+ පරිපූර්ණයෙන් ශිෂ්ඨ කරන්න'
+        ] : [
           '👆 Strengthen muscle memory with this letter first',
           '📈 Gradually increase practice speed',
           '✓ Master current letter at 85%+ before advancing'
@@ -114,11 +123,15 @@ export default function SignLearningLessonScreen() {
       };
     } else if (perf.consecutiveFailures >= 2) {
       return {
-        stage: 'Foundation Track',
-        description: `Let's solidify ${currentLetter} first. ${nextLesson.sinhalaName} shares similar movements.`,
-        recommendation: 'Build confidence with current letter before moving forward',
-        intensity: 'Low',
-        tips: [
+        stage: isSinhalaMode ? 'පදනම් ගමන්' : 'Foundation Track',
+        description: isSinhalaMode ? `ප්‍රධාන වශයෙන් ${currentLetter} ඝටිස්ට කරමු. ${nextLesson.sinhalaName} සමාන ගලිතයන් බේදා ගනු.` : `Let's solidify ${currentLetter} first. ${nextLesson.sinhalaName} shares similar movements.`,
+        recommendation: isSinhalaMode ? 'ඊට පසු අකුරුට ගිය හෙතින් එම අකුරු සමඟ විශ්වාසය පිහිටුවා ගන්න' : 'Build confidence with current letter before moving forward',
+        intensity: isSinhalaMode ? 'පහළ' : 'Low',
+        tips: isSinhalaMode ? [
+          '💪 අතිරේකා භ්‍යාස සැසි එම අකුරු ගැනීමත (දිනපතින 3-5 විනාඩි)',
+          '📚 දෘශ්‍ය මාර්ගෝපදේශ සහ පිහිටුවීම නැවතත් බලන්න',
+          '⏸️ අපහසු නම් විවේකයන් අරගත කර, නැවතත් ශක්තිමත්ව ආපසු එන්න'
+        ] : [
           '💪 Extra practice sessions on current letter (3-5 min daily)',
           '📚 Review visual guides and positioning',
           '⏸️ Take breaks if struggling, return refreshed'
@@ -126,11 +139,15 @@ export default function SignLearningLessonScreen() {
       };
     } else {
       return {
-        stage: 'Balanced Track',
-        description: `Good progress! Next is ${nextLesson.sinhalaName} (${nextLesson.difficulty} difficulty).`,
-        recommendation: 'Continue steady practice, then move to next letter when ready',
-        intensity: 'Medium',
-        tips: [
+        stage: isSinhalaMode ? 'සමතුලිත මාර්ගය' : 'Balanced Track',
+        description: isSinhalaMode ? `හොඳ දියුණුවක්! ඊට පසු වූවේ ${nextLesson.sinhalaName} (${nextLesson.difficulty} දුෂ්කරතා).` : `Good progress! Next is ${nextLesson.sinhalaName} (${nextLesson.difficulty} difficulty).`,
+        recommendation: isSinhalaMode ? 'නිරන්තර පුහුණුව කළ පසු ඉදිරි අකුරට යන්න.' : 'Continue steady practice, then move to next letter when ready',
+        intensity: isSinhalaMode ? 'මධ්‍යම' : 'Medium',
+        tips: isSinhalaMode ? [
+          '✓ ඉදිරියට යාමට පෙර 80% කට වැඩි සාර්ථකතා අනුපාතයට ළඟා වන්න',
+          '🎓 අකුරු අතර සමානතා අධ්‍යයනය කරන්න',
+          '🔄 හොඳම ප්‍රතිඵල සඳහා සෑම සැසියකම 2–3 වරක් පුහුණුව කරන්න'
+        ] : [
           '✓ Reach 80%+ success rate before advancing',
           '🎓 Study the similarities between letters',
           '🔄 Practice 2-3 times per session for best results'
@@ -139,16 +156,20 @@ export default function SignLearningLessonScreen() {
     }
   };
 
-  // RL Agent Personalized Analysis
+  // RL Agent Personalized Analysis with Sinhala Support
   const getRLAgentFeedback = () => {
     const perf = letterPerformanceHistory;
     
     if (perf.successRate < 70 && perf.consecutiveFailures > 0) {
       return {
         emoji: '⚠️',
-        title: 'Focus Area Alert',
-        message: `You've struggled with ${currentLetter} (${perf.sinhalaName}) before. You had ${perf.failures} failures in ${perf.totalAttempts} attempts.`,
-        recommendation: 'We\'ll use visual guides to help you understand the wrist positioning better.',
+        title: isSinhalaMode ? 'අවධානයට බඳින ලබන ස්ථානය' : 'Focus Area Alert',
+        message: isSinhalaMode 
+          ? `ඔබ සඳහා ${currentLetter} (${perf.sinhalaName}) සමඟ කලින් අපහසුතා ගොස් ඇත. ඔබට ${perf.totalAttempts} උත්සාහයින් ${perf.failures} අසාර්ථකතා ඇති විය.`
+          : `You've struggled with ${currentLetter} (${perf.sinhalaName}) before. You had ${perf.failures} failures in ${perf.totalAttempts} attempts.`,
+        recommendation: isSinhalaMode 
+          ? 'ඔබට මණිබැンඩ පිහිටුවීම වඩා හොඳින් තේරුම් ගැනීමට සහාය වීම සඳහා අපි දෘශ්‍ය මාර්ගෝපදේශ භාවිතා කරමු.'
+          : 'We\'ll use visual guides to help you understand the wrist positioning better.',
         strategy: 'More Visual Hints',
         color: '#FEE2E2',
         borderColor: '#EF4444',
@@ -156,9 +177,13 @@ export default function SignLearningLessonScreen() {
     } else if (perf.successRate >= 80 && perf.successRate < 90) {
       return {
         emoji: '💪',
-        title: 'Great Momentum!',
-        message: `You're improving on ${currentLetter}! Your success rate is ${perf.successRate}% with a ${perf.improvementTrend} boost this week.`,
-        recommendation: 'Let\'s push for that final 10% to master this letter completely.',
+        title: isSinhalaMode ? 'විශाල චලිතය!' : 'Great Momentum!',
+        message: isSinhalaMode
+          ? `ඔබ ${currentLetter} සඳහා දියුණු වෙමින් ඉටුවීමටයි! ඔබගේ සාර්ථකතා අනුපාතය ${perf.successRate}% වන අතර මෙම සතිය සඳහා ${perf.improvementTrend} වැඩිවීමක් ඉටුවීමටයි.`
+          : `You're improving on ${currentLetter}! Your success rate is ${perf.successRate}% with a ${perf.improvementTrend} boost this week.`,
+        recommendation: isSinhalaMode
+          ? 'අපි එම අවසාන 10% සඳහා ඉදිරි ගිය යුතුයි එই අකුරු සම්පූර්ණයෙන් ශිෂ්ඨ කිරීම සඳහා.'
+          : 'Let\'s push for that final 10% to master this letter completely.',
         strategy: 'Slower Level Progress',
         color: '#F0FDF4',
         borderColor: '#10B981',
@@ -166,9 +191,13 @@ export default function SignLearningLessonScreen() {
     } else if (perf.successRate >= 90) {
       return {
         emoji: '🔥',
-        title: 'Expert Level Unlocked',
-        message: `Excellent! You've mastered ${currentLetter} with a ${perf.successRate}% success rate. Your best score was ${perf.bestScore}%.`,
-        recommendation: 'Time to challenge yourself with speed. Can you do it faster and still maintain accuracy?',
+        title: isSinhalaMode ? 'විශේෂඥ මට්ටම අගුළු හැරිණි' : 'Expert Level Unlocked',
+        message: isSinhalaMode
+          ? `විශිෂ්ට! ඔබ ${currentLetter} සම්පූර්ණයෙන් ශිෂ්ඨ කර ඇත ${perf.successRate}% සාර්ථකතා අනුපාතයක් සමඟ. ඔබගේ හොඳම ලකුණු වූවේ ${perf.bestScore}% විය.`
+          : `Excellent! You've mastered ${currentLetter} with a ${perf.successRate}% success rate. Your best score was ${perf.bestScore}%.`,
+        recommendation: isSinhalaMode
+          ? 'ඔබ ගිණුම්ගේ ගතිගයි අඩු කිරීමට නම්. ඔබට එය වඩා ඉක්මනින් සිදු කළ හැකිද පසුවත් නිරවද්‍යතාව පවත්වා ගනිමින්?'
+          : 'Time to challenge yourself with speed. Can you do it faster and still maintain accuracy?',
         strategy: 'Repeat Same Letter',
         color: '#FEF3C7',
         borderColor: '#F59E0B',
@@ -176,9 +205,13 @@ export default function SignLearningLessonScreen() {
     } else {
       return {
         emoji: '👍',
-        title: 'Keep Learning',
-        message: `Working on ${currentLetter}! You're at ${perf.successRate}% success rate. Practice makes perfect!`,
-        recommendation: 'Focus on the hand position. Your confidence level is growing steadily.',
+        title: isSinhalaMode ? 'ඉගෙන ගැනීම තබාගන්න' : 'Keep Learning',
+        message: isSinhalaMode
+          ? `${currentLetter} සඳහා කටයුතු කරමින් ඉටුවීමටයි! ඔබ ${perf.successRate}% සාර්ථකතා අනුපාතයට ඉටුවීමටයි. භ්‍යාසයි විතරමු!`
+          : `Working on ${currentLetter}! You're at ${perf.successRate}% success rate. Practice makes perfect!`,
+        recommendation: isSinhalaMode
+          ? 'අකුරුවල පිහිටුවීම මත අවධානයට බඳින්න. ඔබගේ විශ්වාසය මට්ටම ස්ථිරවත්ව වැඩිවෙමින් ඉටුවීමටයි.'
+          : 'Focus on the hand position. Your confidence level is growing steadily.',
         strategy: 'More Visual Hints',
         color: '#F3F4F6',
         borderColor: '#9CA3AF',
@@ -203,7 +236,9 @@ export default function SignLearningLessonScreen() {
     ];
   };
 
-  const rlStrategies = ['More Visual Hints', 'Slower Level Progress', 'Repeat Same Letter'];
+  const rlStrategies = isSinhalaMode 
+    ? ['වඩා ඉහළ දෘශ්‍ය ඉඟි ඇති සලකුණු', 'පියවර මන්දගාමීව ඉදිරියට යන්න', 'එම අකුර නැවත පුහුණුව කරන්න']
+    : ['More Visual Hints', 'Slower Level Progress', 'Repeat Same Letter'];
   const rlAgentFeedback = getRLAgentFeedback();
   const adaptiveLessonPath = getAdaptiveLessonPath();
   const hints = getDynamicHints();
@@ -256,13 +291,13 @@ export default function SignLearningLessonScreen() {
   };
 
   const getCoachTipText = () => {
-    if (selectedStrategy === 'More Visual Hints') {
-      return 'Try using more visual examples to understand the gesture better.';
+    if (selectedStrategy === 'More Visual Hints' || selectedStrategy === 'වඩා ඉහළ දෘශ්‍ය ඉඟි') {
+      return isSinhalaMode ? 'සංඥාව හොඳින් තේරුම් ගැනීමට, දැක්මත් ඇති උදාහරණ වැඩි ලෙස භාවිතා කරන්න.' : 'Try using more visual examples to understand the gesture better.';
     }
-    if (selectedStrategy === 'Slower Level Progress') {
-      return 'Taking time to master each letter will improve your accuracy.';
+    if (selectedStrategy === 'Slower Level Progress' || selectedStrategy === 'තරම් මධ්‍යම දියුණුවක') {
+      return isSinhalaMode ? 'එක් එක් අකුරු ශිෂ්ඨ කිරීම සඳහා කාලයක ගැනීම ඔබගේ නිරවද්‍යතාවය වැඩි කරනු ඇත.' : 'Taking time to master each letter will improve your accuracy.';
     }
-    return 'Practice makes perfect! Repeating helps build muscle memory.';
+    return isSinhalaMode ? 'භ්‍යාසය අසම්පූර්ණතාවයි! පුනරාවර්තනය පෙශි මතක ගිණුම්ගේ ගතිගයි කිරීමට සහාය වේ.' : 'Practice makes perfect! Repeating helps build muscle memory.';
   };
 
   const getIntensityColor = (intensity: string) => {
@@ -327,11 +362,16 @@ export default function SignLearningLessonScreen() {
             <View style={styles.rlAgentHeaderContent}>
               <Text style={styles.rlAgentHeaderIcon}>🤖</Text>
               <View style={styles.rlAgentHeaderText}>
-                <Text style={styles.rlAgentHeaderTitle}>RL Agent Analysis</Text>
-                <Text style={styles.rlAgentHeaderSubtitle}>Personalized Learning Recommendations</Text>
+                <Text style={styles.rlAgentHeaderTitle}>{isSinhalaMode ? 'RL ඒජන්ට් මඟින් ලබාදෙන විශ්ලේෂණය' : 'RL Agent Analysis'}</Text>
+                <Text style={styles.rlAgentHeaderSubtitle}>{isSinhalaMode ? 'පෞද්ගලික ඉගෙනුම් නිර්දේශ' : 'Personalized Learning Recommendations'}</Text>
               </View>
             </View>
-            <Text style={styles.rlAgentBadge}>AI-Powered</Text>
+            <TouchableOpacity
+              style={styles.sinhalaToggleButton}
+              onPress={() => setIsSinhalaMode(!isSinhalaMode)}
+            >
+              <Text style={styles.sinhalaToggleText}>{isSinhalaMode ? 'සි' : 'EN'}</Text>
+            </TouchableOpacity>
           </View>
 
           {/* RL Agent Content Sections */}
@@ -349,22 +389,22 @@ export default function SignLearningLessonScreen() {
             <View style={styles.rlAgentRowContainer}>
               {/* Performance Stats */}
               <View style={styles.statsSection}>
-                <Text style={styles.sectionHeading}>📊 Performance</Text>
+                <Text style={styles.sectionHeading}>{isSinhalaMode ? '📊 කාර්ය සාධනය' : '📊 Performance'}</Text>
                 <View style={styles.performanceStatsContainer}>
                   <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Success Rate</Text>
+                    <Text style={styles.statLabel}>{isSinhalaMode ? 'සාර්ථකතා අනුපාතය' : 'Success Rate'}</Text>
                     <Text style={styles.statValue}>{letterPerformanceHistory.successRate}%</Text>
                   </View>
                   <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Attempts</Text>
+                    <Text style={styles.statLabel}>{isSinhalaMode ? 'උත්සාහ' : 'Attempts'}</Text>
                     <Text style={styles.statValue}>{letterPerformanceHistory.totalAttempts}</Text>
                   </View>
                   <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Confidence</Text>
+                    <Text style={styles.statLabel}>{isSinhalaMode ? 'විශ්වාසය' : 'Confidence'}</Text>
                     <Text style={styles.statValue}>{letterPerformanceHistory.confidence}%</Text>
                   </View>
                   <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Trend</Text>
+                    <Text style={styles.statLabel}>{isSinhalaMode ? 'ප්‍රවණතාවය' : 'Trend'}</Text>
                     <Text style={[styles.statValue, { color: '#10B981' }]}>{letterPerformanceHistory.improvementTrend}</Text>
                   </View>
                 </View>
@@ -372,7 +412,7 @@ export default function SignLearningLessonScreen() {
 
               {/* Learning Path */}
               <View style={styles.learningPathSection}>
-                <Text style={styles.sectionHeading}>📚 Learning Path</Text>
+                <Text style={styles.sectionHeading}>{isSinhalaMode ? '📚 ඉගෙනුම් මාර්ගය' : '📚 Learning Path'}</Text>
                 <View style={styles.lessonPathCard}>
                   <View style={styles.pathStageHeader}>
                     <Text style={styles.pathStage}>{adaptiveLessonPath.stage}</Text>
@@ -386,7 +426,7 @@ export default function SignLearningLessonScreen() {
 
             {/* Strategy Section */}
             <View style={styles.strategySection}>
-              <Text style={styles.sectionHeading}>📊 RL Strategy</Text>
+              <Text style={styles.sectionHeading}>{isSinhalaMode ? '📊 RL උපායමාර්ගය' : '📊 RL Strategy'}</Text>
               <View style={styles.strategyChips}>
                 {rlStrategies.map((strategy) => (
                   <TouchableOpacity
@@ -409,16 +449,16 @@ export default function SignLearningLessonScreen() {
                 ))}
               </View>
               {selectedStrategy === rlAgentFeedback.strategy && (
-                <Text style={styles.strategyRecommended}>✓ Recommended by RL Agent</Text>
+                <Text style={styles.strategyRecommended}>{isSinhalaMode ? '✓ RL ඒජන්ට විසින් නිර්දේශිතය' : '✓ Recommended by RL Agent'}</Text>
               )}
             </View>
 
             {/* Difficulty & Adjustments */}
             <View style={styles.adjustmentsSection}>
-              <Text style={styles.sectionHeading}>⚙️ Adjustments</Text>
+              <Text style={styles.sectionHeading}>{isSinhalaMode ? '⚙️ ගිණුම්' : '⚙️ Adjustments'}</Text>
               <View style={styles.difficultySection}>
                 <View style={styles.difficultyLabelRow}>
-                  <Text style={styles.difficultyLabel}>Difficulty Level</Text>
+                  <Text style={styles.difficultyLabel}>{isSinhalaMode ? 'දුෂ්කරතා මට්ටම' : 'Difficulty Level'}</Text>
                   <Text style={styles.difficultyValue}>
                     {difficultyAdjustment > 0 ? '+' : ''}{difficultyAdjustment}
                   </Text>
@@ -449,15 +489,15 @@ export default function SignLearningLessonScreen() {
                   </TouchableOpacity>
                 </View>
                 <View style={styles.difficultyLabels}>
-                  <Text style={styles.difficultyLabelSmall}>Easier</Text>
-                  <Text style={styles.difficultyLabelSmall}>Harder</Text>
+                  <Text style={styles.difficultyLabelSmall}>{isSinhalaMode ? 'පහළ' : 'Easier'}</Text>
+                  <Text style={styles.difficultyLabelSmall}>{isSinhalaMode ? 'ඉහළ' : 'Harder'}</Text>
                 </View>
               </View>
             </View>
 
             {/* Next Lesson Preview */}
             <View style={styles.nextLessonSection}>
-              <Text style={styles.sectionHeading}>🎯 Next Lesson</Text>
+              <Text style={styles.sectionHeading}>{isSinhalaMode ? '🎯 ඉදිරි පාඩම' : '🎯 Next Lesson'}</Text>
               <View style={styles.nextLessonCard}>
                 <View style={styles.nextLetterHeader}>
                   <View style={styles.nextLetterBadge}>
@@ -482,7 +522,7 @@ export default function SignLearningLessonScreen() {
                 </View>
 
                 <View style={styles.nextLessonTips}>
-                  <Text style={styles.tipsLabel}>📋 How to Prepare:</Text>
+                  <Text style={styles.tipsLabel}>{isSinhalaMode ? '📋 සූදානම් වන ආකාරය:' : '📋 How to Prepare:'}</Text>
                   {getNextLessonPath().tips.map((tip) => (
                     <Text key={tip} style={styles.tipItemNext}>
                       {tip}
@@ -491,7 +531,7 @@ export default function SignLearningLessonScreen() {
                 </View>
 
                 <View style={styles.lessonIntensityBadge}>
-                  <Text style={styles.intensityLabel}>Recommended Intensity:</Text>
+                  <Text style={styles.intensityLabel}>{isSinhalaMode ? 'නිර්දේශිත තීව්‍රතාවය:' : 'Recommended Intensity:'}</Text>
                   <Text style={[
                     styles.intensityValue,
                     {
@@ -1588,6 +1628,19 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     fontSize: 10,
     fontWeight: '700',
+  },
+  sinhalaToggleButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  sinhalaToggleText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
   },
   rlAgentContent: {
     padding: 16,
