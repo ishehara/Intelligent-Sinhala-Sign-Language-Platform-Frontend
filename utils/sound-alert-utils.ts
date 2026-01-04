@@ -1,8 +1,10 @@
 import { Alert } from '@/types/sound-alert';
 
-export const getTimeAgo = (date: Date): string => {
-  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+export const getTimeAgo = (date: Date | string): string => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const seconds = Math.floor((new Date().getTime() - dateObj.getTime()) / 1000);
   
+  if (seconds < 10) return 'Just now';
   if (seconds < 60) return `${seconds} sec ago`;
   
   const minutes = Math.floor(seconds / 60);

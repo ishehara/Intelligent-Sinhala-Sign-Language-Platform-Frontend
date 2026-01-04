@@ -1,3 +1,4 @@
+import { AlertBanner } from '@/components/sound-alert/AlertBanner';
 import { AlertDetailsModal } from '@/components/sound-alert/AlertDetailsModal';
 import { AlertListItem } from '@/components/sound-alert/AlertListItem';
 import { MonitoringStatusCard } from '@/components/sound-alert/MonitoringStatusCard';
@@ -16,6 +17,15 @@ export default function SoundMonitoringScreen() {
   const [selectedFilter, setSelectedFilter] = useState<'all' | AlertSeverity>('all');
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [showAlert, setShowAlert] = useState(false);
+  const [currentAlert, setCurrentAlert] = useState<{
+    vehicleType: string;
+    priority: AlertSeverity;
+    emoji: string;
+    timestamp: string;
+    confidence: number;
+    duration: number;
+  } | null>(null);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -39,6 +49,62 @@ export default function SoundMonitoringScreen() {
     setSelectedAlert(null);
   };
 
+  const triggerAlert = (vehicleType: string, priority: AlertSeverity, emoji: string) => {
+    const confidence = Math.floor(Math.random() * 16) + 85; // 85-100
+    const duration = (Math.random() * 2.5 + 1.0).toFixed(1); // 1.0-3.5
+    
+    const alertData = {
+      id: Date.now(),
+      type: `${vehicleType.toLowerCase()}-horn`,
+      title: `${vehicleType} Horn Detected`,
+      icon: emoji,
+      severity: priority,
+      timestamp: new Date().toISOString(),
+      vehicleType,
+      priority,
+      emoji,
+      confidence,
+      duration: parseFloat(duration),
+    };
+
+    // Set banner alert
+    setCurrentAlert({
+      vehicleType,
+      priority,
+      emoji,
+      timestamp: 'Now',
+      confidence,
+      duration: parseFloat(duration),
+    });
+    setShowAlert(true);
+
+    // Add to alerts list
+    const newAlert: Alert = {
+      id: alertData.id,
+      type: alertData.type as any,
+      title: alertData.title,
+      icon: alertData.icon,
+      severity: alertData.severity,
+      timestamp: alertData.timestamp,
+    };
+    setAlerts([newAlert, ...alerts]);
+
+    // Vibrate
+    Vibration.vibrate([0, 100, 50, 100]);
+  };
+
+  const dismissBanner = () => {
+    setShowAlert(false);
+    setCurrentAlert(null);
+  };
+
+  const handleBannerTap = () => {
+    if (currentAlert && alerts.length > 0) {
+      setSelectedAlert(alerts[0]);
+      setModalVisible(true);
+    }
+  };
+
   const filteredAlerts = selectedFilter === 'all' 
     ? alerts 
     : alerts.filter(alert => alert.severity === selectedFilter);
@@ -57,6 +123,17 @@ export default function SoundMonitoringScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Alert Banner */}
+      {showAlert && currentAlert && (
+        <AlertBanner
+          vehicleType={currentAlert.vehicleType}
+          priority={currentAlert.priority}
+          emoji={currentAlert.emoji}
+          onDismiss={dismissBanner}
+          onTap={handleBannerTap}
+        />
+      )}
+
       <ScrollView 
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -72,6 +149,57 @@ export default function SoundMonitoringScreen() {
           lastAlert={stats.lastAlert}
           activeSounds={stats.activeSounds}
         />
+
+        {/* Test Alert Simulation */}
+        <View style={styles.testSection}>
+          <Text style={styles.testLabel}>Test Alert Simulation:</Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.testButtons}
+          >
+            <TouchableOpacity
+              style={styles.testButton}
+              onPress={() => triggerAlert('Car', 'low', '🚗')}
+            >
+              <Text style={styles.testButtonEmoji}>🚗</Text>
+              <Text style={styles.testButtonText}>Car</Text>
+              <Text style={styles.testButtonPriority}>(Low)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.testButton}
+              onPress={() => triggerAlert('Bus', 'medium', '🚌')}
+            >
+              <Text style={styles.testButtonEmoji}>🚌</Text>
+              <Text style={styles.testButtonText}>Bus</Text>
+              <Text style={styles.testButtonPriority}>(Medium)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.testButton}
+              onPress={() => triggerAlert('Truck', 'high', '🚛')}
+            >
+              <Text style={styles.testButtonEmoji}>🚛</Text>
+              <Text style={styles.testButtonText}>Truck</Text>
+              <Text style={styles.testButtonPriority}>(High)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.testButton}
+              onPress={() => triggerAlert('Train', 'high', '🚂')}
+            >
+              <Text style={styles.testButtonEmoji}>🚂</Text>
+              <Text style={styles.testButtonText}>Train</Text>
+              <Text style={styles.testButtonPriority}>(High)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.testButton}
+              onPress={() => triggerAlert('Motorcycle', 'medium', '🏍️')}
+            >
+              <Text style={styles.testButtonEmoji}>🏍️</Text>
+              <Text style={styles.testButtonText}>Motorcycle</Text>
+              <Text style={styles.testButtonPriority}>(Medium)</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
 
         {/* Filter Chips */}
         <ScrollView 
@@ -246,6 +374,50 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#CCC',
     marginTop: 4,
+  },
+  testSection: {
+    backgroundColor: 'white',
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  testLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  testButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  testButton: {
+    backgroundColor: '#00A8B5',
+    borderRadius: 8,
+    padding: 12,
+    minWidth: 100,
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  testButtonEmoji: {
+    fontSize: 28,
+    marginBottom: 6,
+  },
+  testButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  testButtonPriority: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 11,
   },
   bottomNav: {
     flexDirection: 'row',
