@@ -13,6 +13,8 @@ export const SoundAlertBottomNav: React.FC<SoundAlertBottomNavProps> = ({ active
       router.push('../../sound-alert' as any);
     } else if (route === 'history') {
       router.push('../../alert-history' as any);
+    } else if (route === 'settings') {
+      router.push('../../sound-alert-settings' as any);
     }
   };
 
@@ -34,9 +36,12 @@ export const SoundAlertBottomNav: React.FC<SoundAlertBottomNavProps> = ({ active
         <Text style={[styles.navText, activeTab !== 'history' && styles.navTextInactive]}>History</Text>
       </TouchableOpacity>
       
-      <TouchableOpacity style={styles.navItem}>
-        <Ionicons name="settings" size={24} color="#999" />
-        <Text style={[styles.navText, styles.navTextInactive]}>Settings</Text>
+      <TouchableOpacity 
+        style={styles.navItem}
+        onPress={() => handleNavigation('settings')}
+      >
+        <Ionicons name="settings" size={24} color={activeTab === 'settings' ? '#00BCD4' : '#999'} />
+        <Text style={[styles.navText, activeTab !== 'settings' && styles.navTextInactive]}>Settings</Text>
       </TouchableOpacity>
       
       <TouchableOpacity style={styles.navItem}>
