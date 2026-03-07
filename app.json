@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "HearSense",
-    "slug": "hearsense",
+    "name": "signProject",
+    "slug": "signProject",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "hearsense",
+    "scheme": "signproject",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -38,7 +38,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,

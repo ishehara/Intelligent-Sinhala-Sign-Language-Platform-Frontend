@@ -41,3 +41,9 @@ app-example
 # generated native folders
 /ios
 /android
+
+
+# Media
+*.mp4
+*.mp3
+*.wav
