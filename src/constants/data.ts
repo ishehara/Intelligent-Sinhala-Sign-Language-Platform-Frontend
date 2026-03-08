@@ -69,7 +69,7 @@ export const FOOD_ITEMS: CategoryItem[] = [
 export const DRINK_ITEMS: CategoryItem[] = [
   {
     id: "drink1",
-    name: "මට වතුර බොන්න ඕනේ",
+    name: "මට ජෝ ඕනේ",
     icon: require("../../assets/images/drink.png"),
     audio: require("../../assets/audio/mata jo one.mp3"),
     video: require("../../assets/videos/water-sign.mp4"),
@@ -138,9 +138,9 @@ export const SICK_ITEMS: CategoryItem[] = [
 export const TOILET_ITEMS: CategoryItem[] = [
   {
     id: "toilet1",
-    name: "මුත්‍රා",
+    name: "ඔයාට චූ බරද",
     icon: require("../../assets/images/pee.jpg"),
-    audio: require("../../assets/audio/mata chuu barai.mp3"),
+    audio: require("../../assets/audio/oyata chu barada.mp3"),
     video: require("../../assets/videos/pee-sign.mp4"),
   },
   {
@@ -153,39 +153,39 @@ export const TOILET_ITEMS: CategoryItem[] = [
 ];
 
 export const ACTION_ITEMS: CategoryItem[] = [
-  // {
-  //   id: "action1",
-  //   name: "කන්න",
-  //   icon: require("../../assets/images/noodles.jpg"),
-  //   audio: require("../../assets/audio/mata kanna one.mp3"),
-  //   video: require("../../assets/videos/eat-sign.mp4"),
-  // },
-  // {
-  //   id: "action2",
-  //   name: "බොන්න",
-  //   icon: require("../../assets/images/noodles.jpg"),
-  //   audio: require("../../assets/audio/mata bonna one.mp3"),
-  //   video: require("../../assets/videos/drink-action-sign.mp4"),
-  // },
-  // {
-  //   id: "action3",
-  //   name: "නිදාගන්න",
-  //   icon: require("../../assets/images/noodles.jpg"),
-  //   audio: require("../../assets/audio/mata nida gananwa.mp3"),
-  //   video: require("../../assets/videos/sleep-sign.mp4"),
-  // },
+  {
+    id: "action1",
+    name: "පුලුවන්ද",
+    icon: require("../../assets/images/puluwanda.png"),
+    audio: require("../../assets/audio/puluwanda.mp3"),
+    video: require("../../assets/videos/puluwan.mp4"),
+  },
+ {
+    id: "action2",
+    name: "කොහෙද",
+    icon: require("../../assets/images/koheda.png"),
+    audio: require("../../assets/audio/koheda.mp3"),
+    video: require("../../assets/videos/koheda.mp4"),
+  },
+  {
+    id: "action3",
+    name: "ඇයි",
+    icon: require("../../assets/images/ai.png"),
+    audio: require("../../assets/audio/ai.mp3"),
+    video: require("../../assets/videos/ai.mp4"),
+  },
   {
     id: "action4",
     name: "සෙල්ලම් කරන්න",
     icon: require("../../assets/images/play.jpg"),
-    audio: require("../../assets/audio/mata sellam karanna oone.mp3"),
+    audio: require("../../assets/audio/sellam karanna.mp3"),
     video: require("../../assets/videos/play-sign.mp4"),
   },
   {
     id: "action5",
-    name: "කතාකරනවා",
+    name: "කතා කරන්න",
     icon: require("../../assets/images/talk.jpg"),
-    audio: require("../../assets/audio/katha karanawa.mp3"),
+    audio: require("../../assets/audio/katha karanna.mp3"),
     video: require("../../assets/videos/talk-sign.mp4"),
   },
 ];

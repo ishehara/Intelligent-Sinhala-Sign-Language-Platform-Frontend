@@ -1,7 +1,7 @@
 ================================================================================
 ASSETS FOLDER MANAGEMENT INSTRUCTIONS
 ================================================================================
-Project: Asanga Sign Language Communication App
+Project: Asanga - Introducing a Two-way Sinhala Sign Language Communication App
 Date: February 26, 2026
 Purpose: Guidelines for organizing and managing media assets (audio, images, videos)
 
