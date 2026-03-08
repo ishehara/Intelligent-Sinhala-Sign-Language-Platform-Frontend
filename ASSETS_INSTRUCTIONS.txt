@@ -1,0 +1,302 @@
+================================================================================
+ASSETS FOLDER MANAGEMENT INSTRUCTIONS
+================================================================================
+Project: Asanga Sign Language Communication App
+Date: February 26, 2026
+Purpose: Guidelines for organizing and managing media assets (audio, images, videos)
+
+================================================================================
+FOLDER STRUCTURE OVERVIEW
+================================================================================
+
+assets/
+├── audio/        (Audio instructions and sign language guidance)
+├── images/       (Category and action reference images)
+└── videos/       (Sign language demonstration videos)
+
+
+================================================================================
+1. AUDIO FOLDER - assets/audio/
+================================================================================
+
+PURPOSE:
+- Store MP3 audio files with Sinhala language instructions
+- Provide spoken guidance for sign language learning
+- Used for interactive learning and parent guidance
+
+CURRENT FILES:
+- dath kakkumai.mp3 (Tooth + related instruction)
+- katha karanawa.mp3 (Talk/Speech)
+- mage bada ridenawa.mp3 (My stomach hurts)
+- mage oluwa ridenawa.mp3 (My head hurts)
+- mata bath kanna one.mp3 (I want to eat rice)
+- mata bath kanna oone.mp3 (Alternative: I want to eat rice)
+- mata chuu barai.mp3 (I'm not thirsty)
+- mata hotu galanawa.mp3 (I'm feeling hot)
+- mata idiappa kanna oone.mp3 (I want to eat idiappa)
+- mata jo one.mp3 (I want to sleep)
+- mata kakka barai.mp3 (I'm not hungry)
+- mata kassa.mp3 (I have a cough)
+- mata kiri bonna oone.mp3 (I want to drink milk)
+- mata noodles kanna one.mp3 (I want to eat noodles)
+- mata paan kanna oone.mp3 (I want to eat bread)
+- mata sellam karanna oone.mp3 (I want to bathe)
+- mata thee bonna one.mp3 (I want to drink tea)
+- sellam karanawa.mp3 (Bathing/Showering)
+
+GUIDELINES FOR ADDING NEW AUDIO FILES:
+✓ Format: MP3 only
+✓ Quality: 128-192 kbps bitrate recommended
+✓ Language: Sinhala (clear pronunciation)
+✓ Duration: Keep between 2-5 seconds for optimal engagement
+✓ Naming: Use Sinhala text describing the phrase/action
+✓ Content: Common phrases children and parents would use
+✓ Testing: Ensure audio is clear and distortion-free
+
+
+================================================================================
+2. IMAGES FOLDER - assets/images/
+================================================================================
+
+PURPOSE:
+- Store visual representations of categories and actions
+- Provide reference images for sign learning
+- Icons and category thumbnails for UI elements
+
+CURRENT FILES BY CATEGORY:
+
+Category Images (Main Categories):
+- food.jpg (General food category)
+- health-related: sick.jpg, cough.jpg, headache.png, stomach.jpg, fever.jpg
+- beverages: drink.png, juice.jpg, milk.jpg, water.jpg, tea.png
+- food types: bread.jpg, rice.jpg, noodles.jpg, idiappa.jpg, fruits.jpg
+- activities: play.jpg, talk.jpg, sleep-related, toilet.jpg, pee.jpg, poop.png
+- hygiene/care: tooth.jpg, hotu.jpg
+
+UI Elements:
+- icon.png (App icon)
+- android-icon-foreground.png (Android app icon)
+- actions.jpg (Actions category)
+- parents.jpeg (Parent mode indicator)
+- child-bg.jpg (Child mode background)
+- .placeholder (Empty marker file)
+
+GUIDELINES FOR ADDING NEW IMAGE FILES:
+✓ Format: JPG (preferred) or PNG (for transparency)
+✓ Resolution: 512x512px minimum (recommended 1024x1024px)
+✓ Size: Keep under 500KB per image (optimize using compression tools)
+✓ Quality: Clear, recognizable, child-friendly illustrations
+✓ Naming: Lowercase with hyphens (e.g., banana.jpg, apple-fruit.jpg)
+✓ Content: 
+  - Simple, bold colors
+  - Large, easily recognizable objects
+  - Culturally appropriate for Sri Lankan context
+  - Suitable for children ages 2-8
+✓ Consistency: Maintain similar art style and perspective across all images
+✓ Accessibility: Ensure sufficient contrast for visibility
+
+
+================================================================================
+3. VIDEOS FOLDER - assets/videos/
+================================================================================
+
+PURPOSE:
+- Store MP4 video files demonstrating sign language
+- Show proper hand positioning and movements
+- Provide visual learning for both children and parents
+
+CURRENT FILES:
+- Category Instructions: category-instruction.mp4
+- Food Items: bread-sign.mp4, idiappa-sign.mp4, rice-sign.mp4, 
+              noodles-sign.mp4, fruits-sign.mp4
+- Actions: eat-sign.mp4, drink-action-sign.mp4, play-sign.mp4, 
+           talk-sign.mp4, sleep-sign.mp4
+- Health/Hygiene: cough-sign.mp4, headache-sign.mp4, fever-sign.mp4,
+                  stomachache-sign.mp4, tooth-sign.mp4, pee-sign.mp4,
+                  poop-sign.mp4
+- Beverages: milk-sign.mp4, juice-sign.mp4, water-sign.mp4, tea-sign.mp4
+- Other: hotu-sign.mp4
+
+GUIDELINES FOR ADDING NEW VIDEO FILES:
+✓ Format: MP4 (H.264 video codec, AAC audio)
+✓ Resolution: 720p (1280x720) minimum, 1080p (1920x1080) recommended
+✓ Frame Rate: 30fps
+✓ Quality: Clear, well-lit demonstration
+✓ Duration: 5-15 seconds per video
+✓ Audio: Optional background music or silent with captions
+✓ Naming: End with "-sign.mp4" (e.g., banana-sign.mp4)
+✓ Content Requirements:
+  - Professional sign language demonstrator
+  - Clear hand gestures and positioning
+  - Appropriate pacing for learners
+  - Include context/background if needed
+  - Front-facing camera angle recommended
+✓ File Size: Target 2-5MB per video (use compression if needed)
+✓ Compression: Use ffmpeg or similar tools
+  Command: ffmpeg -i input.mp4 -vcodec h264 -b:v 1.5M -b:a 128k output.mp4
+
+
+================================================================================
+4. NAMING CONVENTIONS SUMMARY
+================================================================================
+
+AUDIO FILES:
+- Use Sinhala text or descriptive English phrases
+- Examples: "mata jo one.mp3", "katha karanawa.mp3"
+- Separate words with spaces or underscores
+- Keep names concise but descriptive
+
+IMAGE FILES:
+- Use lowercase English names
+- Use hyphens to separate words
+- Examples: "bread.jpg", "headache.png", "child-bg.jpg"
+- Be specific about content (e.g., "apple-fruit.jpg" not just "apple.jpg")
+
+VIDEO FILES:
+- Use lowercase English names
+- Include "-sign" suffix to indicate sign language content
+- Examples: "bread-sign.mp4", "headache-sign.mp4"
+- Keep consistent naming pattern
+
+
+================================================================================
+5. CONTENT CATEGORIES (Based on Current Assets)
+================================================================================
+
+The app appears to support the following categories:
+
+1. FOOD & DRINKS
+   - Common foods: bread, rice, noodles, idiappa, fruits
+   - Beverages: milk, juice, water, tea
+   - Related action: eat, drink
+
+2. HEALTH & WELLNESS
+   - Symptoms: cough, headache, fever, stomach pain, tooth pain
+   - States: sick, hot/fever
+
+3. DAILY ACTIVITIES
+   - Play, talk, sleep, toilet use, bathing
+
+4. INDICATORS
+   - Parent mode, child mode, action category
+
+When adding new content, ensure it fits into these logical categories or
+establishes new ones with supporting assets across all three media types.
+
+
+================================================================================
+6. ASSET CHECKLIST FOR NEW PHRASES/WORDS
+================================================================================
+
+Before adding any new learning material, ensure you have prepared:
+
+☐ Audio File (.mp3)
+  - Clear Sinhala pronunciation
+  - 2-5 seconds duration
+  - 128-192 kbps quality
+
+☐ Image File (.jpg or .png)
+  - 512x512px or larger
+  - Clear, recognizable object/action
+  - Child-friendly, culturally appropriate
+
+☐ Video File (.mp4)
+  - 5-15 seconds duration
+  - 720p+ resolution
+  - Professional sign language demonstration
+  - Clear hand positioning
+
+☐ Naming Consistency
+  - All files reference same concept
+  - Naming guidelines followed
+  - No duplicates with similar names
+
+
+================================================================================
+7. FILE SIZE & OPTIMIZATION GUIDELINES
+================================================================================
+
+AUDIO:
+- Target: 1-3MB per file (2-5 seconds)
+- Bitrate: 128-192 kbps
+- Tool: Audacity (free) or ffmpeg
+
+IMAGES:
+- Target: 50-200KB per file
+- Use imagemin, TinyPNG, or Photoshop compression
+- Maintain quality while reducing file size
+
+VIDEOS:
+- Target: 2-5MB per file
+- Use ffmpeg or HandBrake for compression
+- Balance between quality and file size
+
+TOTAL ASSETS SIZE ESTIMATE:
+- Current assets: ~80-100MB
+- Recommended limit: 200MB (for app performance)
+
+
+================================================================================
+8. QUALITY ASSURANCE CHECKLIST
+================================================================================
+
+Before committing new assets:
+
+✓ File Format Correct
+  - Audio: .mp3
+  - Images: .jpg or .png
+  - Videos: .mp4
+
+✓ File Size Optimized
+  - Within guidelines above
+  - No excessive file sizes
+
+✓ Naming Consistent
+  - Follows conventions
+  - No special characters (except hyphens)
+  - Lowercase where applicable
+
+✓ Content Quality
+  - Clear and professional
+  - Suitable for target audience (children 2-8 years)
+  - Culturally appropriate
+
+✓ No Duplicates
+  - Check for similar existing files
+  - Consolidate if possible
+
+✓ Testing
+  - Test on mobile devices
+  - Check loading times
+  - Verify playback quality
+
+
+================================================================================
+9. MAINTENANCE & DEPRECATION
+================================================================================
+
+OLD/UNUSED ASSETS:
+- Mark files starting with underscore: _old-filename.mp4
+- Archive to /assets/archive/ if needed
+- Remove unused files after 2-3 app versions
+
+UPDATES:
+- Always increment version or date in filename if replacing
+- Example: old_cough-sign-v1.mp4 → cough-sign-v2.mp4
+- Keep previous versions until confirmed working
+
+
+================================================================================
+10. CONTACT & SUPPORT
+================================================================================
+
+For questions about:
+- Asset specifications: Refer to this document
+- Sign language accuracy: Consult with app designers
+- File optimization: Check recommended tools section
+- App integration: Refer to src/CONFIG/config.ts
+
+
+================================================================================
+END OF ASSETS INSTRUCTIONS
+================================================================================
