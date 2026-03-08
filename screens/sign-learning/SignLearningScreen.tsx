@@ -11,15 +11,43 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { API_BASE_URL } from "../../config/Sign-Learning/api.config";
+
+// ══════════════════════════════════════════════════════════════
+// Adaptive Context — inline tracking for Thompson agent
+// ══════════════════════════════════════════════════════════════
+
+let _consecutiveFailures = 0;
+let _recentResults: boolean[] = [];
+
+function getConsecutiveFailures(): number {
+  return _consecutiveFailures;
+}
+function getSuccessRateLast5(): number {
+  if (_recentResults.length === 0) return 0.5;
+  return _recentResults.filter(Boolean).length / _recentResults.length;
+}
+function updateStreak(isCorrect: boolean): void {
+  if (isCorrect) {
+    _consecutiveFailures = 0;
+  } else {
+    _consecutiveFailures++;
+  }
+  _recentResults.push(isCorrect);
+  if (_recentResults.length > 5) _recentResults.shift();
+}
+function resetSignContext(): void {
+  _consecutiveFailures = 0;
+  _recentResults = [];
+}
 
 // ══════════════════════════════════════════════════════════════
 // Types
@@ -34,17 +62,15 @@ interface PredictionResult {
   feedback_level?: string;
   feedback?: string;
   tip?: string;
+  correction_tip?: string;
+  rl_action?: string;
+  rl_context?: string;
   sign_feedback_status?: string;
   buffer_size?: number;
-  /** Backend-driven: true when this sign is completed (>=50% confidence) */
   sign_completed?: boolean;
-  /** Backend-driven: 'poor' | 'moderate' | 'good' */
   confidence_category?: string;
-  /** Backend-driven: true when all signs in this level are completed */
   level_complete?: boolean;
-  /** Number of completed signs in this level */
   level_completed_count?: number;
-  /** Total signs in this level */
   level_total_signs?: number;
   [key: string]: unknown;
 }
@@ -80,18 +106,28 @@ interface SignLearningScreenProps {
 const CAPTURE_INTERVAL = 800;
 const VIDEO_FRAME_INTERVAL = 300; // faster for video/motion detection
 
-// Feedback-level themes (updated to teal palette)
+// Feedback-level themes — driven by Thompson agent's feedback_level
 const feedbackTheme: Record<string, FeedbackTheme> = {
   excellent: {
-    icon: "✅",
-    color: "#0D9488",
+    icon: "🎉",
+    color: "#4CAF50",
     label: "Excellent",
-    bg: "#F0FDFA",
+    bg: "#E8F5E9",
   },
-  good: { icon: "👍", color: "#0D9488", label: "Good", bg: "#F0FDFA" },
-  fair: { icon: "⚠️", color: "#D97706", label: "Fair", bg: "#FFFBEB" },
-  poor: { icon: "🔄", color: "#EA580C", label: "Poor", bg: "#FFF7ED" },
-  incorrect: { icon: "✗", color: "#DC2626", label: "Incorrect", bg: "#FEF2F2" },
+  good: { icon: "⭐", color: "#2196F3", label: "Good", bg: "#E3F2FD" },
+  fair: { icon: "⚠️", color: "#FFC107", label: "Fair", bg: "#FFF8E1" },
+  poor: {
+    icon: "📖",
+    color: "#FF5722",
+    label: "Needs Practice",
+    bg: "#FBE9E7",
+  },
+  incorrect: {
+    icon: "❌",
+    color: "#F44336",
+    label: "Incorrect",
+    bg: "#FFEBEE",
+  },
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -192,6 +228,8 @@ const SignLearningScreen: React.FC<SignLearningScreenProps> = ({
       rewardType: string,
       newConf: number | null,
       newCorrect: boolean,
+      sign?: string,
+      level?: string,
     ) => {
       if (!sessionId) return;
       try {
@@ -203,13 +241,16 @@ const SignLearningScreen: React.FC<SignLearningScreenProps> = ({
             reward_type: rewardType,
             new_confidence: newConf,
             new_is_correct: newCorrect,
+            user_id: "default_user",
+            sign: sign || currentSignRef.current,
+            level: levelId,
           }),
         });
-      } catch (err) {
-        console.log("RL reward send failed:", err);
+      } catch (_err) {
+        // reward delivery is best-effort; failures don't affect UX
       }
     },
-    [],
+    [levelId],
   );
 
   // ── Capture & Predict (supports static + dynamic) ──────
@@ -243,7 +284,11 @@ const SignLearningScreen: React.FC<SignLearningScreenProps> = ({
           image: photo.base64,
           session_id: videoSessionRef.current,
           expected_label: signNow,
+          level: levelId,
+          user_id: "default_user",
           is_front_camera: facingNow === "front",
+          consecutive_failures: getConsecutiveFailures(),
+          success_rate_last5: getSuccessRateLast5(),
         });
       } else {
         // Static mode: send single image (original logic)
@@ -252,7 +297,11 @@ const SignLearningScreen: React.FC<SignLearningScreenProps> = ({
           image: photo.base64,
           expected_label: signNow,
           attempt_count: attemptNow,
+          level: levelId,
+          user_id: "default_user",
           is_front_camera: facingNow === "front",
+          consecutive_failures: getConsecutiveFailures(),
+          success_rate_last5: getSuccessRateLast5(),
         });
       }
 
@@ -287,27 +336,36 @@ const SignLearningScreen: React.FC<SignLearningScreenProps> = ({
         result.sign_feedback_status = "correct_sign";
       }
 
-      // ── Send RL reward for PREVIOUS prediction (static only) ──
-      if (!isDynamic) {
+      // ── Send RL reward for PREVIOUS prediction ──
+      // Reward types per integration guide:
+      //   "correct" (+2.0) | "improved" (+1.0) | "retry" (+0.3)
+      //   "give_up" (-1.5) | "no_change" (0.0) | "mastered" (+3.0)
+      {
         const prev = prevPredictionRef.current;
-        if (prev && prev.session_id) {
-          const prevConf = prev.confidence;
+        const sid = prev?.session_id;
+        if (sid) {
+          const prevConf = prev?.confidence ?? 0;
           const newConf = result.confidence;
-          const improved = newConf > prevConf;
           const nowCorrect = result.status === "correct";
 
-          let rewardType = "no_change";
-          if (nowCorrect) rewardType = "correct";
-          else if (improved) rewardType = "improved";
+          let rewardType: string;
+          if (nowCorrect && result.sign_completed) rewardType = "mastered";
+          else if (nowCorrect) rewardType = "correct";
+          else if (newConf > prevConf) rewardType = "improved";
           else rewardType = "retry";
 
-          sendReward(prev.session_id, rewardType, newConf, nowCorrect);
+          sendReward(sid, rewardType, newConf, nowCorrect, signNow, levelId);
         }
       }
 
       prevPredictionRef.current = result;
       setAttemptCount((c) => c + 1);
       setPrediction(result);
+
+      // Update adaptive context tracking
+      if (!isDynamic || result.predicted_label) {
+        updateStreak(result.status === "correct");
+      }
 
       // Stable-feedback logic: require 2 consecutive matching frames to update,
       // EXCEPT for 'correct' status which is accepted immediately — this prevents
@@ -344,7 +402,6 @@ const SignLearningScreen: React.FC<SignLearningScreenProps> = ({
           ? "Cannot reach server. Check your Wi-Fi and that the backend is running."
           : `Error: ${err.message}`,
       );
-      console.error("Predict error:", err);
     } finally {
       setIsProcessing(false);
       isBusyRef.current = false;
@@ -374,7 +431,7 @@ const SignLearningScreen: React.FC<SignLearningScreenProps> = ({
       intervalRef.current = null;
     }
     const prev = prevPredictionRef.current;
-    if (prev && prev.session_id && prev.status !== "correct") {
+    if (prev?.session_id && prev.status !== "correct") {
       sendReward(prev.session_id, "give_up", null, false);
     }
     prevPredictionRef.current = null;
@@ -382,6 +439,7 @@ const SignLearningScreen: React.FC<SignLearningScreenProps> = ({
     lastLabelRef.current = null;
     setAttemptCount(1);
     setIsCapturing(false);
+    resetSignContext();
 
     // Clear video buffer on the server when stopping
     if (isDynamic) {
@@ -406,6 +464,7 @@ const SignLearningScreen: React.FC<SignLearningScreenProps> = ({
   const goNextSign = () => {
     if (currentSignIdx < signs.length - 1) {
       stopCapturing();
+      resetSignContext();
       setPrediction(null);
       setStablePrediction(null);
       setSignCompletedBanner(false);
@@ -416,6 +475,7 @@ const SignLearningScreen: React.FC<SignLearningScreenProps> = ({
   const goPrevSign = () => {
     if (currentSignIdx > 0) {
       stopCapturing();
+      resetSignContext();
       setPrediction(null);
       setStablePrediction(null);
       setSignCompletedBanner(false);
@@ -699,24 +759,9 @@ const SignLearningScreen: React.FC<SignLearningScreenProps> = ({
               <Text style={[styles.resultConf, { color: theme.color }]}>
                 {(stablePrediction.confidence * 100).toFixed(1)}% confidence
               </Text>
-              {/* Match status badge */}
-              <View
-                style={[
-                  styles.matchBadge,
-                  stablePrediction.sign_feedback_status === "correct_sign"
-                    ? styles.matchBadgeCorrect
-                    : styles.matchBadgeWrong,
-                ]}
-              >
-                <Text style={styles.matchBadgeText}>
-                  {stablePrediction.sign_feedback_status === "correct_sign"
-                    ? "✅ Correct Sign"
-                    : `❌ Incorrect – Expected: ${currentSign}`}
-                </Text>
-              </View>
             </View>
 
-            {/* RL Feedback */}
+            {/* Agent Feedback */}
             {stablePrediction.feedback && (
               <View
                 style={[
@@ -738,6 +783,11 @@ const SignLearningScreen: React.FC<SignLearningScreenProps> = ({
                     <Text style={styles.tipIcon}>💡</Text>
                     <Text style={styles.tipText}>{stablePrediction.tip}</Text>
                   </View>
+                ) : null}
+                {stablePrediction.correction_tip ? (
+                  <Text style={styles.correctionText}>
+                    {stablePrediction.correction_tip}
+                  </Text>
                 ) : null}
               </View>
             )}
@@ -1107,16 +1157,6 @@ const styles = StyleSheet.create({
   resultLabel: { fontSize: 13, color: "#6B7280", marginBottom: 4 },
   resultLetter: { fontSize: 48, fontWeight: "bold" },
   resultConf: { fontSize: 14, fontWeight: "600", marginTop: 4 },
-  matchBadge: {
-    marginTop: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  matchBadgeCorrect: { backgroundColor: "#ECFDF5" },
-  matchBadgeWrong: { backgroundColor: "#FEF2F2" },
-  matchBadgeText: { fontSize: 15, fontWeight: "bold" },
-
   // Feedback (preserved logic, updated styles)
   feedbackBox: {
     width: "100%",
@@ -1147,6 +1187,12 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     fontStyle: "italic",
     lineHeight: 19,
+  },
+  correctionText: {
+    fontSize: 13,
+    color: "#D32F2F",
+    marginTop: 6,
+    fontStyle: "italic",
   },
 
   // Correctness

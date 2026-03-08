@@ -253,8 +253,7 @@ class PerformanceHistoryService {
       }
 
       return data;
-    } catch (e) {
-      console.error("Failed to fetch level summaries:", e);
+    } catch (_e) {
       return null;
     }
   }
@@ -307,8 +306,7 @@ class PerformanceHistoryService {
       });
       if (!response.ok) return null;
       return await response.json();
-    } catch (e) {
-      console.error("Failed to fetch next letter suggestion:", e);
+    } catch (_e) {
       return null;
     }
   }
@@ -326,8 +324,7 @@ class PerformanceHistoryService {
       if (!response.ok) return [];
       const data = await response.json();
       return data.suggestions || data || [];
-    } catch (e) {
-      console.error("Failed to fetch practice suggestions:", e);
+    } catch (_e) {
       return [];
     }
   }
@@ -344,8 +341,7 @@ class PerformanceHistoryService {
       });
       if (!response.ok) return null;
       return await response.json();
-    } catch (e) {
-      console.error("Failed to fetch performance history:", e);
+    } catch (_e) {
       return null;
     }
   }

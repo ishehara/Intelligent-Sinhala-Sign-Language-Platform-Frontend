@@ -46,7 +46,11 @@ const RLAnalysisScreen = ({ navigation }) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: "default_user" }),
         }),
-        fetch(`${API_BASE_URL}/enhanced-rl-stats`),
+        fetch(`${API_BASE_URL}/enhanced-rl-stats`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: "default_user" }),
+        }),
         fetch(`${API_BASE_URL}/next-sign`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -63,8 +67,8 @@ const RLAnalysisScreen = ({ navigation }) => {
         }
       }
       if (nextRes.ok) setNextSign(await nextRes.json());
-    } catch (e) {
-      console.log("RL Analysis fetch failed:", e);
+    } catch (_e) {
+      // fetch failed silently
     }
   }, []);
 
@@ -147,7 +151,7 @@ const RLAnalysisScreen = ({ navigation }) => {
               <Text style={{ fontSize: 20 }}>🧠</Text>
             </View>
             <View>
-              <Text style={styles.headerTitle}>RL Agent Analysis</Text>
+              <Text style={styles.headerTitle}>Agent Analysis</Text>
               <Text style={styles.headerSub}>
                 Personalized Learning Recommendations
               </Text>
@@ -234,7 +238,7 @@ const RLAnalysisScreen = ({ navigation }) => {
 
         {/* ── RL Strategy ──────────────────────────────────── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📊 RL Strategy</Text>
+          <Text style={styles.sectionTitle}>📊 Learning Strategy</Text>
           <View style={styles.chipRow}>
             {strategies.map((s) => {
               const isActive = activeStrategies.includes(s);
@@ -275,7 +279,9 @@ const RLAnalysisScreen = ({ navigation }) => {
               );
             })}
           </View>
-          <Text style={styles.recommendedTag}>✓ Recommended by RL Agent</Text>
+          <Text style={styles.recommendedTag}>
+            ✓ Recommended by Learning Agent
+          </Text>
         </View>
 
         {/* ── Adjustments ──────────────────────────────────── */}
@@ -370,7 +376,7 @@ const RLAnalysisScreen = ({ navigation }) => {
 
         <View style={{ height: 30 }} />
       </ScrollView>
-      <SignLearningHeader activeTab="home" />
+      <SignLearningHeader activeTab="rl-analysis" />
     </SafeAreaView>
   );
 };
