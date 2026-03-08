@@ -1,23 +1,41 @@
-import { AlertBanner } from '@/components/sound-alert/AlertBanner';
-import { AlertDetailsModal } from '@/components/sound-alert/AlertDetailsModal';
-import { AlertListItem } from '@/components/sound-alert/AlertListItem';
-import { MonitoringStatusCard } from '@/components/sound-alert/MonitoringStatusCard';
-import { SoundAlertBottomNav } from '@/components/sound-alert/SoundAlertBottomNav';
-import { StatsCard } from '@/components/sound-alert/StatsCard';
-import { Alert, AlertSeverity, MonitoringStats } from '@/types/sound-alert';
-import { getTimeAgo, mockAlerts } from '@/utils/sound-alert-utils';
-import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
+import { AlertBanner } from "@/components/sound-alert/AlertBanner";
+import { AlertDetailsModal } from "@/components/sound-alert/AlertDetailsModal";
+import { AlertListItem } from "@/components/sound-alert/AlertListItem";
+import { MonitoringStatusCard } from "@/components/sound-alert/MonitoringStatusCard";
+import { SoundAlertBottomNav } from "@/components/sound-alert/SoundAlertBottomNav";
+import { StatsCard } from "@/components/sound-alert/StatsCard";
+import {
+  soundAlertService,
+  SoundPrediction,
+} from "@/services/soundAlertService";
+import { Alert, AlertSeverity, MonitoringStats } from "@/types/sound-alert";
+import { getTimeAgo, mockAlerts } from "@/utils/sound-alert-utils";
+import { Ionicons } from "@expo/vector-icons";
+import React, { useEffect, useState } from "react";
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  Vibration,
+  View,
+} from "react-native";
 
 export default function SoundMonitoringScreen() {
   const [isMonitoring, setIsMonitoring] = useState(true);
   const [alerts, setAlerts] = useState<Alert[]>(mockAlerts);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<'all' | AlertSeverity>('all');
+  const [selectedFilter, setSelectedFilter] = useState<"all" | AlertSeverity>(
+    "all",
+  );
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
+  const [backendStatus, setBackendStatus] = useState<
+    "unchecked" | "online" | "offline"
+  >("unchecked");
+  const [mlMode, setMlMode] = useState(false); // true = real ML detection
   const [currentAlert, setCurrentAlert] = useState<{
     vehicleType: string;
     priority: AlertSeverity;
@@ -26,6 +44,51 @@ export default function SoundMonitoringScreen() {
     confidence: number;
     duration: number;
   } | null>(null);
+
+  // ── Backend connectivity check ────────────────────────────────────────────
+  useEffect(() => {
+    soundAlertService
+      .checkBackendHealth()
+      .then(({ reachable, modelLoaded }) => {
+        setBackendStatus(reachable && modelLoaded ? "online" : "offline");
+      });
+  }, []);
+
+  // ── Start / stop real ML detection when monitoring is toggled ────────────
+  useEffect(() => {
+    if (isMonitoring && mlMode && backendStatus === "online") {
+      soundAlertService
+        .startContinuousDetection(handleMLDetection)
+        .catch(() => {
+          setMlMode(false);
+        });
+    } else {
+      soundAlertService.stopDetection();
+    }
+    return () => {
+      soundAlertService.stopDetection();
+    };
+  }, [isMonitoring, mlMode, backendStatus]);
+
+  const handleMLDetection = (prediction: SoundPrediction) => {
+    const priorityMap: Record<string, AlertSeverity> = {
+      "car horns": "low",
+      "motorcycle horns": "medium",
+      "truck horns": "high",
+      "train horns": "high",
+      "bus horns": "medium",
+      horn: "low",
+      siren: "high",
+    };
+    const priority: AlertSeverity =
+      priorityMap[prediction.predicted_class] ?? "medium";
+    triggerAlert(
+      prediction.vehicleType,
+      priority,
+      prediction.emoji,
+      prediction.confidence,
+    );
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -39,6 +102,17 @@ export default function SoundMonitoringScreen() {
     setIsMonitoring(!isMonitoring);
   };
 
+  const toggleMLMode = async () => {
+    if (!mlMode) {
+      // Check backend before enabling
+      const { reachable, modelLoaded } =
+        await soundAlertService.checkBackendHealth();
+      setBackendStatus(reachable && modelLoaded ? "online" : "offline");
+      if (!reachable || !modelLoaded) return;
+    }
+    setMlMode((prev) => !prev);
+  };
+
   const handleAlertPress = (alert: Alert) => {
     setSelectedAlert(alert);
     setModalVisible(true);
@@ -49,10 +123,18 @@ export default function SoundMonitoringScreen() {
     setSelectedAlert(null);
   };
 
-  const triggerAlert = (vehicleType: string, priority: AlertSeverity, emoji: string) => {
-    const confidence = Math.floor(Math.random() * 16) + 85; // 85-100
-    const duration = (Math.random() * 2.5 + 1.0).toFixed(1); // 1.0-3.5
-    
+  const triggerAlert = (
+    vehicleType: string,
+    priority: AlertSeverity,
+    emoji: string,
+    mlConfidence?: number,
+  ) => {
+    const confidence =
+      mlConfidence != null
+        ? Math.round(mlConfidence * 100)
+        : Math.floor(Math.random() * 16) + 85;
+    const duration = (Math.random() * 2.5 + 1.0).toFixed(1);
+
     const alertData = {
       id: Date.now(),
       type: `${vehicleType.toLowerCase()}-horn`,
@@ -72,7 +154,7 @@ export default function SoundMonitoringScreen() {
       vehicleType,
       priority,
       emoji,
-      timestamp: 'Now',
+      timestamp: "Now",
       confidence,
       duration: parseFloat(duration),
     });
@@ -80,12 +162,12 @@ export default function SoundMonitoringScreen() {
 
     // Add to alerts list
     const newAlert: Alert = {
-      id: alertData.id,
+      id: alertData.id.toString(),
       type: alertData.type as any,
       title: alertData.title,
       icon: alertData.icon,
       severity: alertData.severity,
-      timestamp: alertData.timestamp,
+      timestamp: new Date(alertData.timestamp),
     };
     setAlerts([newAlert, ...alerts]);
 
@@ -105,19 +187,21 @@ export default function SoundMonitoringScreen() {
     }
   };
 
-  const filteredAlerts = selectedFilter === 'all' 
-    ? alerts 
-    : alerts.filter(alert => alert.severity === selectedFilter);
+  const filteredAlerts =
+    selectedFilter === "all"
+      ? alerts
+      : alerts.filter((alert) => alert.severity === selectedFilter);
 
   const stats: MonitoringStats = {
     isActive: isMonitoring,
     alertsToday: 12,
-    lastAlert: alerts.length > 0 
-      ? {
-          type: 'Car horn',
-          timeAgo: getTimeAgo(alerts[0].timestamp),
-        }
-      : null,
+    lastAlert:
+      alerts.length > 0
+        ? {
+            type: "Car horn",
+            timeAgo: getTimeAgo(alerts[0].timestamp),
+          }
+        : null,
     activeSounds: 5,
   };
 
@@ -134,17 +218,77 @@ export default function SoundMonitoringScreen() {
         />
       )}
 
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#00BCD4']} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#00BCD4"]}
+          />
         }
       >
         {/* Monitoring Status */}
-        <MonitoringStatusCard isActive={isMonitoring} onToggle={toggleMonitoring} />
+        <MonitoringStatusCard
+          isActive={isMonitoring}
+          onToggle={toggleMonitoring}
+        />
+
+        {/* ML Backend Status + Toggle */}
+        <View style={styles.mlCard}>
+          <View style={styles.mlHeader}>
+            <View style={styles.mlTitleRow}>
+              <Text style={styles.mlTitle}>🤖 ML Detection</Text>
+              <View
+                style={[
+                  styles.statusDot,
+                  backendStatus === "online"
+                    ? styles.dotOnline
+                    : backendStatus === "offline"
+                      ? styles.dotOffline
+                      : styles.dotUnchecked,
+                ]}
+              />
+              <Text style={styles.statusText}>
+                {backendStatus === "online"
+                  ? "Backend Online"
+                  : backendStatus === "offline"
+                    ? "Backend Offline"
+                    : "Checking..."}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.mlToggleBtn,
+                mlMode &&
+                  backendStatus === "online" &&
+                  styles.mlToggleBtnActive,
+              ]}
+              onPress={toggleMLMode}
+              disabled={backendStatus === "unchecked"}
+            >
+              <Text style={styles.mlToggleBtnText}>
+                {mlMode && backendStatus === "online"
+                  ? "⏸ Stop ML"
+                  : "▶ Start ML"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {backendStatus === "offline" && (
+            <Text style={styles.mlOfflineHint}>
+              Start sound_alert_api.py on your computer, then tap "Start ML" to
+              use real detection.
+            </Text>
+          )}
+          {mlMode && backendStatus === "online" && (
+            <Text style={styles.mlActiveHint}>
+              🎤 Listening via microphone... (2.5s recording cycles)
+            </Text>
+          )}
+        </View>
 
         {/* Stats Card */}
-        <StatsCard 
+        <StatsCard
           alertsToday={stats.alertsToday}
           lastAlert={stats.lastAlert}
           activeSounds={stats.activeSounds}
@@ -153,14 +297,14 @@ export default function SoundMonitoringScreen() {
         {/* Test Alert Simulation */}
         <View style={styles.testSection}>
           <Text style={styles.testLabel}>Test Alert Simulation:</Text>
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.testButtons}
           >
             <TouchableOpacity
               style={styles.testButton}
-              onPress={() => triggerAlert('Car', 'low', '🚗')}
+              onPress={() => triggerAlert("Car", "low", "🚗")}
             >
               <Text style={styles.testButtonEmoji}>🚗</Text>
               <Text style={styles.testButtonText}>Car</Text>
@@ -168,7 +312,7 @@ export default function SoundMonitoringScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.testButton}
-              onPress={() => triggerAlert('Bus', 'medium', '🚌')}
+              onPress={() => triggerAlert("Bus", "medium", "🚌")}
             >
               <Text style={styles.testButtonEmoji}>🚌</Text>
               <Text style={styles.testButtonText}>Bus</Text>
@@ -176,7 +320,7 @@ export default function SoundMonitoringScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.testButton}
-              onPress={() => triggerAlert('Truck', 'high', '🚛')}
+              onPress={() => triggerAlert("Truck", "high", "🚛")}
             >
               <Text style={styles.testButtonEmoji}>🚛</Text>
               <Text style={styles.testButtonText}>Truck</Text>
@@ -184,7 +328,7 @@ export default function SoundMonitoringScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.testButton}
-              onPress={() => triggerAlert('Train', 'high', '🚂')}
+              onPress={() => triggerAlert("Train", "high", "🚂")}
             >
               <Text style={styles.testButtonEmoji}>🚂</Text>
               <Text style={styles.testButtonText}>Train</Text>
@@ -192,7 +336,7 @@ export default function SoundMonitoringScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.testButton}
-              onPress={() => triggerAlert('Motorcycle', 'medium', '🏍️')}
+              onPress={() => triggerAlert("Motorcycle", "medium", "🏍️")}
             >
               <Text style={styles.testButtonEmoji}>🏍️</Text>
               <Text style={styles.testButtonText}>Motorcycle</Text>
@@ -202,35 +346,75 @@ export default function SoundMonitoringScreen() {
         </View>
 
         {/* Filter Chips */}
-        <ScrollView 
-          horizontal 
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.filterContainer}
           contentContainerStyle={styles.filterContent}
         >
-          <TouchableOpacity 
-            style={[styles.filterChip, selectedFilter === 'all' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('all')}
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              selectedFilter === "all" && styles.filterChipActive,
+            ]}
+            onPress={() => setSelectedFilter("all")}
           >
-            <Text style={[styles.filterText, selectedFilter === 'all' && styles.filterTextActive]}>All</Text>
+            <Text
+              style={[
+                styles.filterText,
+                selectedFilter === "all" && styles.filterTextActive,
+              ]}
+            >
+              All
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.filterChip, selectedFilter === 'high' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('high')}
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              selectedFilter === "high" && styles.filterChipActive,
+            ]}
+            onPress={() => setSelectedFilter("high")}
           >
-            <Text style={[styles.filterText, selectedFilter === 'high' && styles.filterTextActive]}>High</Text>
+            <Text
+              style={[
+                styles.filterText,
+                selectedFilter === "high" && styles.filterTextActive,
+              ]}
+            >
+              High
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.filterChip, selectedFilter === 'medium' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('medium')}
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              selectedFilter === "medium" && styles.filterChipActive,
+            ]}
+            onPress={() => setSelectedFilter("medium")}
           >
-            <Text style={[styles.filterText, selectedFilter === 'medium' && styles.filterTextActive]}>Medium</Text>
+            <Text
+              style={[
+                styles.filterText,
+                selectedFilter === "medium" && styles.filterTextActive,
+              ]}
+            >
+              Medium
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.filterChip, selectedFilter === 'low' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('low')}
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              selectedFilter === "low" && styles.filterChipActive,
+            ]}
+            onPress={() => setSelectedFilter("low")}
           >
-            <Text style={[styles.filterText, selectedFilter === 'low' && styles.filterTextActive]}>Low</Text>
+            <Text
+              style={[
+                styles.filterText,
+                selectedFilter === "low" && styles.filterTextActive,
+              ]}
+            >
+              Low
+            </Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -246,11 +430,19 @@ export default function SoundMonitoringScreen() {
           </View>
           {filteredAlerts.length > 0 ? (
             filteredAlerts.map((alert) => (
-              <AlertListItem key={alert.id} alert={alert} onPress={() => handleAlertPress(alert)} />
+              <AlertListItem
+                key={alert.id}
+                alert={alert}
+                onPress={() => handleAlertPress(alert)}
+              />
             ))
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="notifications-off-outline" size={64} color="#CCC" />
+              <Ionicons
+                name="notifications-off-outline"
+                size={64}
+                color="#CCC"
+              />
               <Text style={styles.emptyText}>No alerts found</Text>
               <Text style={styles.emptySubtext}>You're all caught up!</Text>
             </View>
@@ -262,7 +454,7 @@ export default function SoundMonitoringScreen() {
       <SoundAlertBottomNav />
 
       {/* Alert Details Modal */}
-      <AlertDetailsModal 
+      <AlertDetailsModal
         visible={modalVisible}
         alert={selectedAlert}
         onClose={closeModal}
@@ -274,41 +466,41 @@ export default function SoundMonitoringScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: "#F5F5F5",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingTop: 50,
     paddingBottom: 10,
-    backgroundColor: 'white',
+    backgroundColor: "white",
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   notificationBadge: {
-    position: 'relative',
+    position: "relative",
   },
   badge: {
-    position: 'absolute',
+    position: "absolute",
     top: -4,
     right: -4,
-    backgroundColor: '#FF4444',
+    backgroundColor: "#FF4444",
     borderRadius: 10,
     minWidth: 20,
     height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 4,
   },
   badgeText: {
-    color: 'white',
+    color: "white",
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   filterContainer: {
     marginTop: 10,
@@ -321,67 +513,67 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     marginRight: 10,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
   },
   filterChipActive: {
-    backgroundColor: '#00BCD4',
-    borderColor: '#00BCD4',
+    backgroundColor: "#00BCD4",
+    borderColor: "#00BCD4",
   },
   filterText: {
     fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
+    color: "#666",
+    fontWeight: "500",
   },
   filterTextActive: {
-    color: 'white',
+    color: "white",
   },
   alertsSection: {
     marginTop: 10,
     marginBottom: 20,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginHorizontal: 16,
     marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   clearAllText: {
     fontSize: 14,
-    color: '#00BCD4',
-    fontWeight: '600',
+    color: "#00BCD4",
+    fontWeight: "600",
   },
   emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 60,
   },
   emptyText: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#999',
+    fontWeight: "600",
+    color: "#999",
     marginTop: 16,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#CCC',
+    color: "#CCC",
     marginTop: 4,
   },
   testSection: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     marginHorizontal: 16,
     marginTop: 16,
     padding: 16,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -389,20 +581,20 @@ const styles = StyleSheet.create({
   },
   testLabel: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 12,
   },
   testButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   testButton: {
-    backgroundColor: '#00A8B5',
+    backgroundColor: "#00A8B5",
     borderRadius: 8,
     padding: 12,
     minWidth: 100,
-    alignItems: 'center',
+    alignItems: "center",
     marginRight: 12,
   },
   testButtonEmoji: {
@@ -410,23 +602,93 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   testButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 2,
   },
   testButtonPriority: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: "rgba(255, 255, 255, 0.8)",
     fontSize: 11,
   },
+  // ML Backend Card
+  mlCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+    padding: 14,
+    borderLeftWidth: 4,
+    borderLeftColor: "#00BCD4",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+  },
+  mlHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  mlTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  mlTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1A1A2E",
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  dotOnline: { backgroundColor: "#27AE60" },
+  dotOffline: { backgroundColor: "#E74C3C" },
+  dotUnchecked: { backgroundColor: "#95A5A6" },
+  statusText: {
+    fontSize: 12,
+    color: "#666",
+  },
+  mlToggleBtn: {
+    backgroundColor: "#E0F7FA",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#00BCD4",
+  },
+  mlToggleBtnActive: {
+    backgroundColor: "#00BCD4",
+  },
+  mlToggleBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#006064",
+  },
+  mlOfflineHint: {
+    marginTop: 8,
+    fontSize: 11,
+    color: "#E74C3C",
+    lineHeight: 15,
+  },
+  mlActiveHint: {
+    marginTop: 6,
+    fontSize: 11,
+    color: "#27AE60",
+    fontWeight: "500",
+  },
   bottomNav: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    backgroundColor: "white",
     paddingVertical: 10,
     paddingBottom: 20,
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    shadowColor: '#000',
+    borderTopColor: "#E0E0E0",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
