@@ -4,9 +4,11 @@ import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { COLORS } from "../../constants/colors";
 
+type TabName = "home" | "rl-analysis" | "history" | "settings" | "profile";
+
 interface SignLearningHeaderProps {
-  activeTab?: "home" | "history" | "settings" | "profile";
-  onTabChange?: (tab: "home" | "history" | "settings" | "profile") => void;
+  activeTab?: TabName;
+  onTabChange?: (tab: TabName) => void;
 }
 
 export const SignLearningHeader = ({
@@ -15,13 +17,16 @@ export const SignLearningHeader = ({
 }: SignLearningHeaderProps) => {
   const router = useRouter();
 
-  const handleTabPress = (tab: "home" | "history" | "settings" | "profile") => {
+  const handleTabPress = (tab: TabName) => {
     onTabChange?.(tab);
 
     // Navigation routes — use replace to avoid stacking screens
     switch (tab) {
       case "home":
         router.replace("/sign-learning" as any);
+        break;
+      case "rl-analysis":
+        router.replace("/sign-learning/rl-analysis" as any);
         break;
       case "history":
         router.replace("/sign-learning/history" as any);
@@ -40,7 +45,7 @@ export const SignLearningHeader = ({
     iconName,
     label,
   }: {
-    tab: "home" | "history" | "settings" | "profile";
+    tab: TabName;
     iconName: React.ComponentProps<typeof Ionicons>["name"];
     label: string;
   }) => {
@@ -65,6 +70,7 @@ export const SignLearningHeader = ({
   return (
     <View style={styles.bottomNav}>
       <NavItem tab="home" iconName="home" label="Home" />
+      <NavItem tab="rl-analysis" iconName="analytics" label="Analysis" />
       <NavItem tab="history" iconName="time" label="History" />
       <NavItem tab="settings" iconName="settings" label="Settings" />
       <NavItem tab="profile" iconName="person" label="Profile" />
@@ -92,7 +98,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   navText: {
-    fontSize: 12,
+    fontSize: 10,
     color: COLORS.PRIMARY,
     marginTop: 4,
     fontWeight: "500",

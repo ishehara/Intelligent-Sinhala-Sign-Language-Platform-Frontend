@@ -10,21 +10,21 @@
 
 import { SignLearningHeader } from "@/components/common/SignLearningHeader";
 import performanceService, {
-  type AllLevelSummariesResponse,
-  type FrontendLevelProgress,
-  type NextLetterSuggestion,
-  type PracticeSuggestion,
-  type SignStats,
-  computeFrontendLevelProgress,
+    type AllLevelSummariesResponse,
+    type FrontendLevelProgress,
+    type NextLetterSuggestion,
+    type PracticeSuggestion,
+    type SignStats,
+    computeFrontendLevelProgress,
 } from "@/services/sign-learning/performance-history.service";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -182,10 +182,6 @@ const HistoryScreen = ({ navigation }: any) => {
   const fetchData = useCallback(async () => {
     try {
       const summaries = await performanceService.getAllLevelSummaries();
-      console.log(
-        "[HistoryScreen] summaries:",
-        JSON.stringify(summaries, null, 2)?.slice(0, 500),
-      );
       setData(summaries);
 
       // Compute per-frontend-level progress
@@ -244,8 +240,8 @@ const HistoryScreen = ({ navigation }: any) => {
         }
         setSuggestions(newSugs);
       }
-    } catch (e) {
-      console.log("History fetch failed:", e);
+    } catch (_e) {
+      // fetch failed silently
     }
   }, []);
 
@@ -346,6 +342,9 @@ const HistoryScreen = ({ navigation }: any) => {
         {/* Header */}
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>📊 Learning History</Text>
+          <Text style={styles.headerSub}>
+            Adaptive performance tracking & insights
+          </Text>
         </View>
 
         {hasData && levels ? (
@@ -353,7 +352,7 @@ const HistoryScreen = ({ navigation }: any) => {
             {/* ── Overall Summary ──────────────────────────── */}
             {overall && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>📊 Overall Summary</Text>
+                <Text style={styles.sectionTitle}>🧠 Performance Summary</Text>
                 <View style={styles.statsGrid}>
                   <View style={styles.statBox}>
                     <Text style={styles.statLabel}>Success Rate</Text>
@@ -769,10 +768,10 @@ const HistoryScreen = ({ navigation }: any) => {
           </>
         ) : (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyIcon}>📝</Text>
-            <Text style={styles.emptyTitle}>No Practice Data Yet</Text>
+            <Text style={styles.emptyIcon}>🧠</Text>
+            <Text style={styles.emptyTitle}>No Data Yet</Text>
             <Text style={styles.emptySubtitle}>
-              Start practicing signs to see your performance history and get
+              Start practicing signs to track your performance and get
               personalized recommendations!
             </Text>
           </View>
@@ -792,6 +791,12 @@ const styles = StyleSheet.create({
 
   headerRow: { paddingVertical: 16 },
   headerTitle: { fontSize: 24, fontWeight: "bold", color: "#111827" },
+  headerSub: {
+    fontSize: 13,
+    color: "#0D9488",
+    marginTop: 2,
+    fontWeight: "500",
+  },
 
   // Empty state
   emptyCard: {
