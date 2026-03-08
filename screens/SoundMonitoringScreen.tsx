@@ -1,4 +1,3 @@
-import { AlertBanner } from "@/components/sound-alert/AlertBanner";
 import { AlertDetailsModal } from "@/components/sound-alert/AlertDetailsModal";
 import { AlertListItem } from "@/components/sound-alert/AlertListItem";
 import { MonitoringStatusCard } from "@/components/sound-alert/MonitoringStatusCard";
@@ -9,10 +8,20 @@ import {
   SoundPrediction,
 } from "@/services/soundAlertService";
 import { Alert, AlertSeverity, MonitoringStats } from "@/types/sound-alert";
-import { getTimeAgo, mockAlerts } from "@/utils/sound-alert-utils";
-import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
 import {
+  DEFAULT_SETTINGS,
+  isAlertTypeEnabled,
+  loadSettings,
+  SoundAlertSettings,
+} from "@/utils/sound-alert-settings";
+import { getTimeAgo } from "@/utils/sound-alert-utils";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -22,28 +31,64 @@ import {
   View,
 } from "react-native";
 
+const ALERTS_STORAGE_KEY = "sound_alerts_history";
+
 export default function SoundMonitoringScreen() {
   const [isMonitoring, setIsMonitoring] = useState(true);
-  const [alerts, setAlerts] = useState<Alert[]>(mockAlerts);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<"all" | AlertSeverity>(
     "all",
   );
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [showAlert, setShowAlert] = useState(false);
   const [backendStatus, setBackendStatus] = useState<
     "unchecked" | "online" | "offline"
   >("unchecked");
-  const [mlMode, setMlMode] = useState(false); // true = real ML detection
-  const [currentAlert, setCurrentAlert] = useState<{
-    vehicleType: string;
-    priority: AlertSeverity;
+  // Tier 1 — full-screen emergency overlay (must dismiss manually)
+  const [emergencyAlert, setEmergencyAlert] = useState<{
+    title: string;
     emoji: string;
-    timestamp: string;
-    confidence: number;
-    duration: number;
+    priority: AlertSeverity;
   } | null>(null);
+  // Tier 2 — auto-dismiss banner (general sounds)
+  const [bannerAlert, setBannerAlert] = useState<{
+    title: string;
+    emoji: string;
+  } | null>(null);
+  const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Consecutive car-horn counter — require 2 back-to-back detections to avoid false positives
+  const carHornCount = useRef(0);
+  // Settings
+  const [settings, setSettings] =
+    useState<SoundAlertSettings>(DEFAULT_SETTINGS);
+  // Screen flash animation
+  const flashAnim = useRef(new Animated.Value(0)).current;
+
+  // ── Load persisted alerts on mount ─────────────────────────────────────────
+  useEffect(() => {
+    AsyncStorage.getItem(ALERTS_STORAGE_KEY).then((stored) => {
+      if (stored) {
+        const parsed: Alert[] = JSON.parse(stored).map((a: any) => ({
+          ...a,
+          timestamp: new Date(a.timestamp),
+        }));
+        setAlerts(parsed);
+      }
+    });
+  }, []);
+
+  // ── Reload settings whenever the screen comes into focus ─────────────────────
+  useFocusEffect(
+    useCallback(() => {
+      loadSettings().then(setSettings);
+    }, []),
+  );
+
+  // ── Persist alerts whenever they change ──────────────────────────────────
+  useEffect(() => {
+    AsyncStorage.setItem(ALERTS_STORAGE_KEY, JSON.stringify(alerts));
+  }, [alerts]);
 
   // ── Backend connectivity check ────────────────────────────────────────────
   useEffect(() => {
@@ -54,31 +99,78 @@ export default function SoundMonitoringScreen() {
       });
   }, []);
 
-  // ── Start / stop real ML detection when monitoring is toggled ────────────
+  // ── Start / stop real ML detection when monitoring or soundDetection setting changes ──
   useEffect(() => {
-    if (isMonitoring && mlMode && backendStatus === "online") {
+    if (isMonitoring && backendStatus === "online" && settings.soundDetection) {
       soundAlertService
         .startContinuousDetection(handleMLDetection)
-        .catch(() => {
-          setMlMode(false);
-        });
+        .catch(() => {});
     } else {
       soundAlertService.stopDetection();
     }
     return () => {
       soundAlertService.stopDetection();
     };
-  }, [isMonitoring, mlMode, backendStatus]);
+  }, [isMonitoring, backendStatus, settings.soundDetection]);
 
   const handleMLDetection = (prediction: SoundPrediction) => {
+    // Respect alert type settings
+    if (!isAlertTypeEnabled(prediction.predicted_class, settings)) {
+      console.log(
+        `⏭️ Skipping ${prediction.predicted_class} — disabled in settings`,
+      );
+      return;
+    }
+
+    // Car horn debounce: require 2 consecutive detections before triggering
+    if (prediction.predicted_class === "car horns") {
+      carHornCount.current += 1;
+      if (carHornCount.current < 2) {
+        console.log(
+          `🚗 Car horn #${carHornCount.current} — waiting for confirmation...`,
+        );
+        return;
+      }
+      carHornCount.current = 0; // confirmed — reset and proceed
+    } else {
+      carHornCount.current = 0; // reset on any non-car-horn detection
+    }
+
+    // "traffic"/"loudspeaker" is frequently triggered by background noise (AC, fan, room noise).
+    // Add it silently to the list as "Ambient Sound" — no banner, no vibration.
+    if (
+      prediction.predicted_class === "traffic" ||
+      prediction.predicted_class === "loudspeaker"
+    ) {
+      const ambientAlert: Alert = {
+        id: Date.now().toString(),
+        type: "loudspeaker",
+        title: "Ambient Sound",
+        icon: "🔉",
+        severity: "low",
+        timestamp: new Date(),
+      };
+      setAlerts((prev) => [ambientAlert, ...prev]);
+      return;
+    }
+
     const priorityMap: Record<string, AlertSeverity> = {
-      "car horns": "low",
+      "car horns": "medium",
       "motorcycle horns": "medium",
       "truck horns": "high",
       "train horns": "high",
-      "bus horns": "medium",
+      "bus horns": "high",
       horn: "low",
       siren: "high",
+      // Emergency classes — always high
+      "ambulance-siren": "high",
+      "fire-alarm": "high",
+      ambulance: "high",
+      firetruck: "high",
+      police: "high",
+      train: "high",
+      truck: "high",
+      bus: "high",
     };
     const priority: AlertSeverity =
       priorityMap[prediction.predicted_class] ?? "medium";
@@ -87,6 +179,7 @@ export default function SoundMonitoringScreen() {
       priority,
       prediction.emoji,
       prediction.confidence,
+      prediction.predicted_class,
     );
   };
 
@@ -102,17 +195,6 @@ export default function SoundMonitoringScreen() {
     setIsMonitoring(!isMonitoring);
   };
 
-  const toggleMLMode = async () => {
-    if (!mlMode) {
-      // Check backend before enabling
-      const { reachable, modelLoaded } =
-        await soundAlertService.checkBackendHealth();
-      setBackendStatus(reachable && modelLoaded ? "online" : "offline");
-      if (!reachable || !modelLoaded) return;
-    }
-    setMlMode((prev) => !prev);
-  };
-
   const handleAlertPress = (alert: Alert) => {
     setSelectedAlert(alert);
     setModalVisible(true);
@@ -123,67 +205,75 @@ export default function SoundMonitoringScreen() {
     setSelectedAlert(null);
   };
 
+  const EMERGENCY_CLASSES = [
+    "ambulance-siren",
+    "fire-alarm",
+    "train horns",
+    "truck horns",
+    "bus horns",
+    "ambulance",
+    "firetruck",
+    "police",
+    "train",
+    "truck",
+    "bus",
+  ];
+
   const triggerAlert = (
     vehicleType: string,
     priority: AlertSeverity,
     emoji: string,
     mlConfidence?: number,
+    predicted_class?: string,
   ) => {
     const confidence =
       mlConfidence != null
         ? Math.round(mlConfidence * 100)
         : Math.floor(Math.random() * 16) + 85;
-    const duration = (Math.random() * 2.5 + 1.0).toFixed(1);
 
-    const alertData = {
-      id: Date.now(),
-      type: `${vehicleType.toLowerCase()}-horn`,
-      title: `${vehicleType} Horn Detected`,
-      icon: emoji,
-      severity: priority,
-      timestamp: new Date().toISOString(),
-      vehicleType,
-      priority,
-      emoji,
-      confidence,
-      duration: parseFloat(duration),
-    };
-
-    // Set banner alert
-    setCurrentAlert({
-      vehicleType,
-      priority,
-      emoji,
-      timestamp: "Now",
-      confidence,
-      duration: parseFloat(duration),
-    });
-    setShowAlert(true);
+    const EMERGENCY_TYPES = ["Ambulance", "Police", "Firetruck", "Emergency"];
+    const title = EMERGENCY_TYPES.includes(vehicleType)
+      ? `${vehicleType} Detected`
+      : `${vehicleType} Horn Detected`;
 
     // Add to alerts list
     const newAlert: Alert = {
-      id: alertData.id.toString(),
-      type: alertData.type as any,
-      title: alertData.title,
-      icon: alertData.icon,
-      severity: alertData.severity,
-      timestamp: new Date(alertData.timestamp),
+      id: Date.now().toString(),
+      type: `${vehicleType.toLowerCase()}-horn` as any,
+      title,
+      icon: emoji,
+      severity: priority,
+      timestamp: new Date(),
     };
-    setAlerts([newAlert, ...alerts]);
+    setAlerts((prev) => [newAlert, ...prev]);
 
-    // Vibrate
-    Vibration.vibrate([0, 100, 50, 100]);
-  };
+    const isEmergency = predicted_class
+      ? EMERGENCY_CLASSES.includes(predicted_class)
+      : priority === "high";
 
-  const dismissBanner = () => {
-    setShowAlert(false);
-    setCurrentAlert(null);
-  };
+    // Screen flash
+    if (settings.screenFlash) {
+      const flashColor = isEmergency ? 1 : 0.5;
+      flashAnim.setValue(flashColor);
+      Animated.timing(flashAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }).start();
+    }
 
-  const handleBannerTap = () => {
-    if (currentAlert && alerts.length > 0) {
-      setSelectedAlert(alerts[0]);
-      setModalVisible(true);
+    if (!settings.showBanners) return; // alert is already in the list; just skip visual overlay
+
+    if (isEmergency) {
+      // Tier 1 — continuous strong vibration until user dismisses
+      if (settings.vibration) Vibration.vibrate([0, 500, 200], true);
+      setEmergencyAlert({ title, emoji, priority });
+    } else {
+      // Tier 2 — short light cut pattern
+      if (settings.vibration) Vibration.vibrate([0, 80, 60, 80, 60, 80]);
+      if (bannerTimer.current) clearTimeout(bannerTimer.current);
+      setBannerAlert({ title, emoji });
+      bannerTimer.current = setTimeout(() => setBannerAlert(null), 3500);
     }
   };
 
@@ -194,28 +284,62 @@ export default function SoundMonitoringScreen() {
 
   const stats: MonitoringStats = {
     isActive: isMonitoring,
-    alertsToday: 12,
+    alertsToday: alerts.length,
     lastAlert:
       alerts.length > 0
         ? {
-            type: "Car horn",
+            type: alerts[0].title,
             timeAgo: getTimeAgo(alerts[0].timestamp),
           }
         : null,
-    activeSounds: 5,
+    activeSounds: alerts.filter((a) => a.severity === "high").length,
   };
 
   return (
     <View style={styles.container}>
-      {/* Alert Banner */}
-      {showAlert && currentAlert && (
-        <AlertBanner
-          vehicleType={currentAlert.vehicleType}
-          priority={currentAlert.priority}
-          emoji={currentAlert.emoji}
-          onDismiss={dismissBanner}
-          onTap={handleBannerTap}
-        />
+      {/* Screen flash overlay — sits above everything, animates out */}
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.screenFlash, { opacity: flashAnim }]}
+      />
+
+      {/* Tier 1 — Emergency full-screen overlay */}
+      <Modal visible={!!emergencyAlert} transparent animationType="fade">
+        <View style={styles.emergencyOverlay}>
+          <Text style={styles.emergencyEmoji}>{emergencyAlert?.emoji}</Text>
+          <Text style={styles.emergencyTitle}>{emergencyAlert?.title}</Text>
+          <View
+            style={[
+              styles.priorityBadge,
+              emergencyAlert?.priority === "high"
+                ? styles.priorityHigh
+                : emergencyAlert?.priority === "medium"
+                  ? styles.priorityMedium
+                  : styles.priorityLow,
+            ]}
+          >
+            <Text style={styles.priorityBadgeText}>
+              {(emergencyAlert?.priority ?? "high").toUpperCase()} PRIORITY
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.emergencyDismiss}
+            onPress={() => {
+              Vibration.cancel();
+              setEmergencyAlert(null);
+            }}
+          >
+            <Text style={styles.emergencyDismissText}>DISMISS</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
+      {/* Tier 2 — Auto-dismiss banner */}
+      {bannerAlert && (
+        <View style={styles.bannerOverlay}>
+          <Text style={styles.bannerEmoji}>{bannerAlert.emoji}</Text>
+          <Text style={styles.bannerTitle}>{bannerAlert.title}</Text>
+        </View>
       )}
 
       <ScrollView
@@ -234,7 +358,7 @@ export default function SoundMonitoringScreen() {
           onToggle={toggleMonitoring}
         />
 
-        {/* ML Backend Status + Toggle */}
+        {/* ML Backend Status */}
         <View style={styles.mlCard}>
           <View style={styles.mlHeader}>
             <View style={styles.mlTitleRow}>
@@ -257,30 +381,13 @@ export default function SoundMonitoringScreen() {
                     : "Checking..."}
               </Text>
             </View>
-            <TouchableOpacity
-              style={[
-                styles.mlToggleBtn,
-                mlMode &&
-                  backendStatus === "online" &&
-                  styles.mlToggleBtnActive,
-              ]}
-              onPress={toggleMLMode}
-              disabled={backendStatus === "unchecked"}
-            >
-              <Text style={styles.mlToggleBtnText}>
-                {mlMode && backendStatus === "online"
-                  ? "⏸ Stop ML"
-                  : "▶ Start ML"}
-              </Text>
-            </TouchableOpacity>
           </View>
           {backendStatus === "offline" && (
             <Text style={styles.mlOfflineHint}>
-              Start sound_alert_api.py on your computer, then tap "Start ML" to
-              use real detection.
+              Backend is offline. Start the backend server to enable detection.
             </Text>
           )}
-          {mlMode && backendStatus === "online" && (
+          {isMonitoring && backendStatus === "online" && (
             <Text style={styles.mlActiveHint}>
               🎤 Listening via microphone... (2.5s recording cycles)
             </Text>
@@ -293,57 +400,6 @@ export default function SoundMonitoringScreen() {
           lastAlert={stats.lastAlert}
           activeSounds={stats.activeSounds}
         />
-
-        {/* Test Alert Simulation */}
-        <View style={styles.testSection}>
-          <Text style={styles.testLabel}>Test Alert Simulation:</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.testButtons}
-          >
-            <TouchableOpacity
-              style={styles.testButton}
-              onPress={() => triggerAlert("Car", "low", "🚗")}
-            >
-              <Text style={styles.testButtonEmoji}>🚗</Text>
-              <Text style={styles.testButtonText}>Car</Text>
-              <Text style={styles.testButtonPriority}>(Low)</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.testButton}
-              onPress={() => triggerAlert("Bus", "medium", "🚌")}
-            >
-              <Text style={styles.testButtonEmoji}>🚌</Text>
-              <Text style={styles.testButtonText}>Bus</Text>
-              <Text style={styles.testButtonPriority}>(Medium)</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.testButton}
-              onPress={() => triggerAlert("Truck", "high", "🚛")}
-            >
-              <Text style={styles.testButtonEmoji}>🚛</Text>
-              <Text style={styles.testButtonText}>Truck</Text>
-              <Text style={styles.testButtonPriority}>(High)</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.testButton}
-              onPress={() => triggerAlert("Train", "high", "🚂")}
-            >
-              <Text style={styles.testButtonEmoji}>🚂</Text>
-              <Text style={styles.testButtonText}>Train</Text>
-              <Text style={styles.testButtonPriority}>(High)</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.testButton}
-              onPress={() => triggerAlert("Motorcycle", "medium", "🏍️")}
-            >
-              <Text style={styles.testButtonEmoji}>🏍️</Text>
-              <Text style={styles.testButtonText}>Motorcycle</Text>
-              <Text style={styles.testButtonPriority}>(Medium)</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
 
         {/* Filter Chips */}
         <ScrollView
@@ -423,7 +479,12 @@ export default function SoundMonitoringScreen() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Alerts</Text>
             {filteredAlerts.length > 0 && (
-              <TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setAlerts([]);
+                  AsyncStorage.removeItem(ALERTS_STORAGE_KEY);
+                }}
+              >
                 <Text style={styles.clearAllText}>Clear All</Text>
               </TouchableOpacity>
             )}
@@ -467,6 +528,86 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F5",
+  },
+  screenFlash: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#E74C3C",
+    zIndex: 999,
+  },
+  // Tier 1 emergency overlay
+  emergencyOverlay: {
+    flex: 1,
+    backgroundColor: "#C0392B",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 32,
+  },
+  emergencyEmoji: {
+    fontSize: 100,
+    marginBottom: 24,
+  },
+  emergencyTitle: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: "white",
+    textAlign: "center",
+    letterSpacing: 1,
+    marginBottom: 20,
+  },
+  priorityBadge: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 40,
+  },
+  priorityHigh: { backgroundColor: "rgba(0,0,0,0.3)" },
+  priorityMedium: { backgroundColor: "rgba(243,156,18,0.8)" },
+  priorityLow: { backgroundColor: "rgba(39,174,96,0.8)" },
+  priorityBadgeText: {
+    color: "white",
+    fontWeight: "800",
+    fontSize: 14,
+    letterSpacing: 2,
+  },
+  emergencyDismiss: {
+    backgroundColor: "white",
+    paddingHorizontal: 48,
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  emergencyDismissText: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#C0392B",
+    letterSpacing: 2,
+  },
+  // Tier 2 banner
+  bannerOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    backgroundColor: "#F39C12",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    paddingTop: 50,
+    gap: 12,
+  },
+  bannerEmoji: {
+    fontSize: 28,
+  },
+  bannerTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "white",
+    flex: 1,
   },
   header: {
     flexDirection: "row",

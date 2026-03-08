@@ -31,7 +31,7 @@ export const API_BASE_URL = "http://10.80.129.107:5003";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const BACKGROUND_TASK_NAME = "SOUND_ALERT_BACKGROUND_TASK";
-export const CONFIDENCE_THRESHOLD = 0.7; // Minimum confidence to trigger alert
+export const CONFIDENCE_THRESHOLD = 0.85; // Minimum confidence to trigger alert
 
 // Maps backend class names to app-friendly format
 const CLASS_MAP: Record<
@@ -53,6 +53,23 @@ const CLASS_MAP: Record<
     emoji: "🚨",
     alertType: "ambulance-siren",
   },
+  "ambulance-siren": {
+    vehicleType: "Ambulance",
+    emoji: "🚑",
+    alertType: "ambulance-siren",
+  },
+  "fire-alarm": {
+    vehicleType: "Firetruck",
+    emoji: "🚒",
+    alertType: "fire-alarm",
+  },
+  ambulance: {
+    vehicleType: "Ambulance",
+    emoji: "🚑",
+    alertType: "ambulance-siren",
+  },
+  firetruck: { vehicleType: "Firetruck", emoji: "🚒", alertType: "fire-alarm" },
+  police: { vehicleType: "Police", emoji: "🚓", alertType: "ambulance-siren" },
 };
 
 export type SoundPrediction = {
@@ -100,6 +117,8 @@ class SoundAlertService {
     onDetection: (prediction: SoundPrediction) => void,
     threshold = CONFIDENCE_THRESHOLD,
   ): Promise<void> {
+    if (this.isDetecting) return; // already running, don't start a second loop
+
     const hasPermission = await this.requestPermissions();
     if (!hasPermission) {
       throw new Error("Microphone permission denied");
