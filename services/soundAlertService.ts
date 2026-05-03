@@ -26,8 +26,8 @@ import * as TaskManager from "expo-task-manager";
 // ── IMPORTANT: Set this to your computer's local IP ──────────────────────────
 // Example: 'http://192.168.1.105:5003'
 // Run 'ipconfig' on Windows to find your IPv4 address
-// ⚠️ HOTSPOT IP FOR PRESENTATION: 10.80.129.107
-export const API_BASE_URL = "http://10.80.129.107:5003";
+// ⚠️ VIVA NETWORK: 192.168.104.107
+export const API_BASE_URL = "http://192.168.104.107:5003";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const BACKGROUND_TASK_NAME = "SOUND_ALERT_BACKGROUND_TASK";
