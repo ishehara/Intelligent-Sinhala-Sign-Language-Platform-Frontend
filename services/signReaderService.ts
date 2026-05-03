@@ -17,22 +17,22 @@
  *  - Backend runs on port 5000 by default
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import {
-  FrameResponse,
-  HealthCheckResult,
-  TranslationHistoryItem,
-} from '@/types/sign-reader';
+    FrameResponse,
+    HealthCheckResult,
+    TranslationHistoryItem,
+} from "@/types/sign-reader";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
 
 // ── IMPORTANT: Set this to your computer's local IP ──────────────────────────
 // Example: 'http://192.168.1.105:5000'
 // Run 'ipconfig' on Windows to find your IPv4 Address
 // ⚠️  VIVA NETWORK: 192.168.104.88
-export const SIGN_READER_API_URL = 'http://192.168.104.88:5000';
+export const SIGN_READER_API_URL = "http://192.168.104.88:5000";
 // ─────────────────────────────────────────────────────────────────────────────
 
-const HISTORY_KEY = 'sign_reader_history_v1';
+const HISTORY_KEY = "sign_reader_history_v1";
 
 class SignReaderService {
   // ── Health & connection ───────────────────────────────────────────────────
@@ -63,7 +63,7 @@ class SignReaderService {
     const response = await axios.post(
       `${SIGN_READER_API_URL}/predict_frame`,
       { frame: frameBase64 },
-      { timeout: 10000 }
+      { timeout: 10000 },
     );
     return response.data as FrameResponse;
   }
@@ -74,7 +74,7 @@ class SignReaderService {
       await axios.post(
         `${SIGN_READER_API_URL}/reset_buffer`,
         {},
-        { timeout: 5000 }
+        { timeout: 5000 },
       );
     } catch {
       // Non-critical — buffer will auto-clear after prediction anyway
@@ -93,7 +93,7 @@ class SignReaderService {
   }
 
   async saveToHistory(
-    item: Omit<TranslationHistoryItem, 'id' | 'dateCategory'>
+    item: Omit<TranslationHistoryItem, "id" | "dateCategory">,
   ): Promise<void> {
     try {
       const history = await this.getHistory();
@@ -105,7 +105,7 @@ class SignReaderService {
       const updated = [newItem, ...history].slice(0, 100);
       await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
     } catch (e) {
-      console.error('[SignReaderService] saveToHistory failed:', e);
+      console.error("[SignReaderService] saveToHistory failed:", e);
     }
   }
 
@@ -116,8 +116,8 @@ class SignReaderService {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private classifyDate(
-    isoTimestamp: string
-  ): TranslationHistoryItem['dateCategory'] {
+    isoTimestamp: string,
+  ): TranslationHistoryItem["dateCategory"] {
     const d = new Date(isoTimestamp);
     const today = this.startOfDay(new Date());
     const yesterday = this.startOfDay(new Date(today));
@@ -126,10 +126,10 @@ class SignReaderService {
     weekAgo.setDate(weekAgo.getDate() - 7);
     const itemDay = this.startOfDay(d);
 
-    if (itemDay.getTime() === today.getTime()) return 'today';
-    if (itemDay.getTime() === yesterday.getTime()) return 'yesterday';
-    if (itemDay >= weekAgo) return 'thisWeek';
-    return 'older';
+    if (itemDay.getTime() === today.getTime()) return "today";
+    if (itemDay.getTime() === yesterday.getTime()) return "yesterday";
+    if (itemDay >= weekAgo) return "thisWeek";
+    return "older";
   }
 
   private startOfDay(date: Date): Date {
@@ -138,7 +138,7 @@ class SignReaderService {
 
   formatTimestamp(isoTimestamp: string): string {
     const d = new Date(isoTimestamp);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
 }
 

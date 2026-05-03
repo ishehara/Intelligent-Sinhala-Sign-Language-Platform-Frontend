@@ -37,5 +37,5 @@ export interface TranslationHistoryItem {
   englishLabel: string;
   confidence: number;
   timestamp: string;
-  dateCategory: 'today' | 'yesterday' | 'thisWeek' | 'older';
+  dateCategory: "today" | "yesterday" | "thisWeek" | "older";
 }
