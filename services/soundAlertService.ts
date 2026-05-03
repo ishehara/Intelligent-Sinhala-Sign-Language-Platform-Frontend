@@ -31,7 +31,7 @@ export const API_BASE_URL = "http://192.168.104.107:5003";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const BACKGROUND_TASK_NAME = "SOUND_ALERT_BACKGROUND_TASK";
-export const CONFIDENCE_THRESHOLD = 0.92; // Minimum confidence to trigger alert (increased from 0.85 to reduce false positives)
+export const CONFIDENCE_THRESHOLD = 0.95; // Minimum confidence to trigger alert (95% - very strict + requires consecutive detection)
 
 // Maps backend class names to app-friendly format
 const CLASS_MAP: Record<
@@ -86,6 +86,7 @@ class SoundAlertService {
   private isDetecting = false;
   private onDetectionCallback: ((prediction: SoundPrediction) => void) | null =
     null;
+  private lastDetection: SoundPrediction | null = null; // Track last detection for consecutive confirmation
 
   /** Request microphone permission */
   async requestPermissions(): Promise<boolean> {
@@ -138,6 +139,7 @@ class SoundAlertService {
   async stopDetection(): Promise<void> {
     this.isDetecting = false;
     this.onDetectionCallback = null;
+    this.lastDetection = null; // Clear last detection
     if (this.recording) {
       try {
         await this.recording.stopAndUnloadAsync();
@@ -305,12 +307,33 @@ class SoundAlertService {
         alertType: data.type || "car-horn",
       };
 
-      return {
+      const result: SoundPrediction = {
         predicted_class: predicted_class,
         confidence: data.confidence / 100, // Backend sends 0-100, we use 0-1
         all_probabilities: {},
         ...mapped,
       };
+
+      // ⭐ CONSECUTIVE DETECTION FILTER: require 2 detections of same type to confirm
+      // This prevents random noise spikes from triggering false alerts
+      if (
+        this.lastDetection &&
+        this.lastDetection.predicted_class === result.predicted_class &&
+        this.lastDetection.confidence > thresholdPercent / 100
+      ) {
+        console.log(
+          `✅ CONFIRMED: ${result.vehicleType} detected (consecutive match, ${confidencePercent.toFixed(0)}%)`,
+        );
+        this.lastDetection = null; // Reset for next confirmation cycle
+        return result; // Return the alert
+      }
+
+      // Store this detection and wait for confirmation
+      console.log(
+        `⏳ Detection pending confirmation: ${result.vehicleType} (${confidencePercent.toFixed(0)}%). Next detection must match.`,
+      );
+      this.lastDetection = result;
+      return null; // Wait for next detection to confirm
     } catch (error: any) {
       // Log all available error info
       console.error("🔴 Axios error status:", error?.response?.status);
