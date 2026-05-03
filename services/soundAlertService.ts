@@ -31,7 +31,7 @@ export const API_BASE_URL = "http://192.168.104.107:5003";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const BACKGROUND_TASK_NAME = "SOUND_ALERT_BACKGROUND_TASK";
-export const CONFIDENCE_THRESHOLD = 0.85; // Minimum confidence to trigger alert
+export const CONFIDENCE_THRESHOLD = 0.92; // Minimum confidence to trigger alert (increased from 0.85 to reduce false positives)
 
 // Maps backend class names to app-friendly format
 const CLASS_MAP: Record<
@@ -169,16 +169,39 @@ class SoundAlertService {
     onDetection: (prediction: SoundPrediction) => void,
     threshold: number,
   ): Promise<void> {
+    let consecutiveErrors = 0;
+    const maxConsecutiveErrors = 5;
+
     while (this.isDetecting) {
       try {
         const result = await this._recordAndPredict(threshold);
         if (result) {
           onDetection(result);
         }
-      } catch (error) {
-        console.error("❌ Error in detection loop:", error);
-        // Brief pause before retrying on error
-        await new Promise((r) => setTimeout(r, 1000));
+        consecutiveErrors = 0; // Reset error counter on success
+      } catch (error: any) {
+        consecutiveErrors++;
+        if (error?.code === "ECONNABORTED" || error?.code === "ENOTFOUND") {
+          console.warn(
+            `⚠️  Network error (attempt ${consecutiveErrors}/${maxConsecutiveErrors}):`,
+            error.message,
+          );
+          if (consecutiveErrors >= maxConsecutiveErrors) {
+            console.error(
+              "❌ Too many network errors. Stopping detection. Check backend connection.",
+            );
+            this.isDetecting = false;
+            break;
+          }
+        } else {
+          console.error("❌ Error in detection loop:", error);
+        }
+        // Exponential backoff: 1s, 2s, 4s, etc.
+        const delayMs = Math.min(
+          1000 * Math.pow(2, consecutiveErrors - 1),
+          10000,
+        );
+        await new Promise((r) => setTimeout(r, delayMs));
       }
     }
   }
@@ -250,12 +273,28 @@ class SoundAlertService {
       const data = response.data;
       console.log("📥 Backend response:", data);
 
-      // Check if detected
-      if (!data.detected || data.confidence < threshold * 100) {
+      // Check if detected with strict validation
+      const confidencePercent = data.confidence || 0;
+      const thresholdPercent = threshold * 100;
+      const isDetected = data.detected === true; // Explicit true check
+
+      console.log(
+        `🔍 Detection check: detected=${isDetected}, confidence=${confidencePercent}%, threshold=${thresholdPercent}%`,
+      );
+
+      if (!isDetected || confidencePercent < thresholdPercent) {
         console.log(
-          `⏭️ Skipping: confidence ${data.confidence}% < ${threshold * 100}%`,
+          `⏭️ Skipping: ${!isDetected ? "not detected" : `confidence ${confidencePercent}% < ${thresholdPercent}%`}`,
         );
         return null;
+      }
+
+      // Additional validation: ensure confidence is reasonable
+      if (confidencePercent > 100) {
+        console.warn(
+          `⚠️  Invalid confidence ${confidencePercent}% > 100%. Normalizing...`,
+        );
+        data.confidence = Math.min(confidencePercent, 100);
       }
 
       // 4. Map backend response to app format
