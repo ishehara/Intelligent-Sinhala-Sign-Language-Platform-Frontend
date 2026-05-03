@@ -7,7 +7,7 @@
 
 // Get your IP: Open PowerShell and run: (Get-NetIPAddress -AddressFamily IPv4).IPAddress
 
-export const API_BASE_URL = "http://192.168.104.107:5003";
+export const API_BASE_URL = "http://192.168.104.88:5003";
 
 export const API_CONFIG = {
   // Development - Use this when running backend on local machine

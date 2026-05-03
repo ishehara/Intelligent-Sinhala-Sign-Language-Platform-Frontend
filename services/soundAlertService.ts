@@ -26,8 +26,17 @@ import * as TaskManager from "expo-task-manager";
 // ── IMPORTANT: Set this to your computer's local IP ──────────────────────────
 // Example: 'http://192.168.1.105:5003'
 // Run 'ipconfig' on Windows to find your IPv4 address
-// ⚠️ VIVA NETWORK: 192.168.104.107
-export const API_BASE_URL = "http://192.168.104.107:5003";
+// ⚠️ VIVA NETWORK: 192.168.104.88
+export const API_BASE_URL = "http://192.168.104.88:5003";
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Hot-reload safety ────────────────────────────────────────────────────────
+// `global` persists across Expo Fast Refresh module re-evaluations.
+// Incrementing this token on every module load tells any orphaned loop from a
+// previous module instance to exit, releasing the native audio session.
+declare const global: Record<string, any>;
+global.__soundAlertToken = (global.__soundAlertToken ?? 0) + 1;
+const _moduleToken: number = global.__soundAlertToken;
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const BACKGROUND_TASK_NAME = "SOUND_ALERT_BACKGROUND_TASK";
@@ -84,6 +93,8 @@ export type SoundPrediction = {
 class SoundAlertService {
   private recording: Audio.Recording | null = null;
   private isDetecting = false;
+  private isRecording = false;
+  private loopToken = 0; // token for the currently active loop
   private onDetectionCallback: ((prediction: SoundPrediction) => void) | null =
     null;
 
@@ -117,7 +128,9 @@ class SoundAlertService {
     onDetection: (prediction: SoundPrediction) => void,
     threshold = CONFIDENCE_THRESHOLD,
   ): Promise<void> {
-    if (this.isDetecting) return; // already running, don't start a second loop
+    // Always stop first — handles hot-reload where old async loop is still running
+    // but the singleton was re-created with isDetecting=false.
+    await this.stopDetection();
 
     const hasPermission = await this.requestPermissions();
     if (!hasPermission) {
@@ -131,21 +144,28 @@ class SoundAlertService {
 
     this.isDetecting = true;
     this.onDetectionCallback = onDetection;
-    this._runLoop(onDetection, threshold);
+    // Stamp the new loop with the current module token so any loop from a
+    // previous module instance (hot-reload) that is still running will exit
+    // as soon as it checks its token.
+    this.loopToken = _moduleToken;
+    this._runLoop(onDetection, threshold, _moduleToken);
   }
 
   /** Stop continuous monitoring */
   async stopDetection(): Promise<void> {
     this.isDetecting = false;
     this.onDetectionCallback = null;
-    if (this.recording) {
+    const rec = this.recording;
+    this.recording = null;
+    if (rec) {
       try {
-        await this.recording.stopAndUnloadAsync();
+        await rec.stopAndUnloadAsync();
       } catch {
         // ignore
       }
-      this.recording = null;
     }
+    // Wait briefly for the native audio session to fully release on Android
+    await new Promise((r) => setTimeout(r, 300));
   }
 
   /** One recording + inference cycle */
@@ -168,11 +188,18 @@ class SoundAlertService {
   private async _runLoop(
     onDetection: (prediction: SoundPrediction) => void,
     threshold: number,
+    token: number,
   ): Promise<void> {
     let consecutiveErrors = 0;
     const maxConsecutiveErrors = 5;
 
-    while (this.isDetecting) {
+    // Exit immediately if this loop is already stale (another startContinuousDetection
+    // was called, or the module was hot-reloaded and a new token was issued).
+    while (
+      this.isDetecting &&
+      token === this.loopToken &&
+      token === global.__soundAlertToken
+    ) {
       try {
         const result = await this._recordAndPredict(threshold);
         if (result) {
@@ -181,7 +208,12 @@ class SoundAlertService {
         consecutiveErrors = 0; // Reset error counter on success
       } catch (error: any) {
         consecutiveErrors++;
-        if (error?.code === "ECONNABORTED" || error?.code === "ENOTFOUND") {
+        if (
+          error?.code === "ECONNABORTED" ||
+          error?.code === "ENOTFOUND" ||
+          error?.code === "ERR_NETWORK" ||
+          error?.message === "Network Error"
+        ) {
           console.warn(
             `⚠️  Network error (attempt ${consecutiveErrors}/${maxConsecutiveErrors}):`,
             error.message,
@@ -210,95 +242,139 @@ class SoundAlertService {
     threshold: number,
   ): Promise<SoundPrediction | null> {
     console.log("🎤 Starting recording...");
-    // Record as M4A/AAC (what Android actually supports natively)
-    // ffmpeg on the backend will decode it via librosa/audioread
-    const { recording } = await Audio.Recording.createAsync(
-      Audio.RecordingOptionsPresets.HIGH_QUALITY,
-    );
-    this.recording = recording;
 
-    await new Promise((r) => setTimeout(r, 2500));
-
-    // Guard: if stopDetection() already unloaded this recording, bail out
-    if (!this.recording) return null;
-
-    try {
-      await recording.stopAndUnloadAsync();
-    } catch {
-      // Already unloaded by stopDetection() — nothing to do
+    // Prevent two concurrent createAsync calls (race condition guard)
+    if (this.isRecording) {
+      console.log("⚠️ Recording already in progress — skipping this cycle");
       return null;
     }
-    this.recording = null;
-    console.log("✅ Recording complete");
+    this.isRecording = true;
 
-    const uri = recording.getURI();
-    if (!uri) {
-      console.log("❌ No recording URI");
-      return null;
-    }
-
-    // Check file size to confirm audio was captured
-    const fileInfo = await FileSystem.getInfoAsync(uri);
-    console.log(`📁 File URI: ${uri}`);
-    console.log(
-      `📏 File size: ${fileInfo.exists ? (fileInfo as any).size : "unknown"} bytes`,
-    );
-
-    // 2. Create FormData with audio file
-    const formData = new FormData();
-    const filename = uri.split("/").pop() || "recording.wav";
-
-    // @ts-ignore - FormData accepts file objects
-    formData.append("audio", {
-      uri: uri,
-      type: "audio/mp4",
-      name: "recording.m4a",
-    });
-
-    console.log(`📦 Sending audio file: ${filename}`);
+    let rec: Audio.Recording | null = null;
+    let meteringTimer: ReturnType<typeof setInterval> | null = null;
+    let audioUri: string | null = null;
 
     try {
-      // 3. Send to backend for inference
+      // Retry createAsync — the native Android session sometimes takes a moment
+      // to fully release after the previous stopAndUnloadAsync.
+      for (let attempt = 0; attempt < 8; attempt++) {
+        try {
+          const { recording } = await Audio.Recording.createAsync({
+            ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+            isMeteringEnabled: true,
+          });
+          rec = recording;
+          break;
+        } catch (e: any) {
+          if (attempt < 7 && e?.message?.includes("Only one Recording")) {
+            console.warn(
+              `⚠️ Audio session busy, retrying (${attempt + 1}/7)...`,
+            );
+            await new Promise((r) => setTimeout(r, 500));
+          } else {
+            throw e;
+          }
+        }
+      }
+
+      if (!rec) throw new Error("Failed to create recording after retries");
+      this.recording = rec;
+
+      // Poll metering to detect real sound energy
+      let maxLevel = -160; // dBFS; silence ≈ -160, loud sounds ≈ -10
+      meteringTimer = setInterval(async () => {
+        if (rec) {
+          try {
+            const status = await rec.getStatusAsync();
+            if (status.isRecording && status.metering !== undefined) {
+              maxLevel = Math.max(maxLevel, status.metering);
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }, 200);
+
+      await new Promise((r) => setTimeout(r, 2500));
+      clearInterval(meteringTimer);
+      meteringTimer = null;
+
+      // Guard: stopDetection() may have already unloaded this recording
+      if (!this.recording) {
+        rec = null; // externally cleaned up — don't double-stop in finally
+        return null;
+      }
+
+      // Stop and release the native session before any async network work
+      await rec.stopAndUnloadAsync();
+      audioUri = rec.getURI() ?? null;
+      rec = null; // session released — finally won't double-stop
+      this.recording = null;
+
+      // Skip inference if audio was silent
+      const MIN_SOUND_LEVEL_DB = -35;
+      if (maxLevel < MIN_SOUND_LEVEL_DB) {
+        console.log(
+          `🔇 Audio too quiet (${maxLevel.toFixed(1)} dBFS < ${MIN_SOUND_LEVEL_DB}) — skipping`,
+        );
+        if (audioUri)
+          await FileSystem.deleteAsync(audioUri, { idempotent: true });
+        return null;
+      }
+
+      console.log("✅ Recording complete");
+      if (!audioUri) {
+        console.log("❌ No recording URI");
+        return null;
+      }
+
+      const fileInfo = await FileSystem.getInfoAsync(audioUri);
+      console.log(`📁 File URI: ${audioUri}`);
+      console.log(
+        `📏 File size: ${fileInfo.exists ? (fileInfo as any).size : "unknown"} bytes`,
+      );
+
+      const formData = new FormData();
+      const filename = audioUri.split("/").pop() || "recording.m4a";
+      // @ts-ignore — FormData accepts file objects in React Native
+      formData.append("audio", {
+        uri: audioUri,
+        type: "audio/mp4",
+        name: filename,
+      });
+      console.log(`📦 Sending audio: ${filename}`);
+
       console.log(`🌐 Sending to ${API_BASE_URL}/predict...`);
       const response = await axios.post(`${API_BASE_URL}/predict`, formData, {
         timeout: 15000,
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // Clean up temp file
-      await FileSystem.deleteAsync(uri, { idempotent: true });
+      await FileSystem.deleteAsync(audioUri, { idempotent: true });
+      audioUri = null;
 
       const data = response.data;
       console.log("📥 Backend response:", data);
 
-      // Check if detected with strict validation
-      const confidencePercent = data.confidence || 0;
+      const confidencePercent: number = data.confidence ?? 0;
       const thresholdPercent = threshold * 100;
-      const isDetected = data.detected === true; // Explicit true check
-
+      const isDetected = data.detected === true;
       console.log(
-        `🔍 Detection check: detected=${isDetected}, confidence=${confidencePercent}%, threshold=${thresholdPercent}%`,
+        `🔍 Detection: detected=${isDetected}, confidence=${confidencePercent}%, threshold=${thresholdPercent}%`,
       );
 
       if (!isDetected || confidencePercent < thresholdPercent) {
         console.log(
-          `⏭️ Skipping: ${!isDetected ? "not detected" : `confidence ${confidencePercent}% < ${thresholdPercent}%`}`,
+          `⏭️ Skipping: ${
+            !isDetected
+              ? "not detected"
+              : `confidence ${confidencePercent}% < ${thresholdPercent}%`
+          }`,
         );
         return null;
       }
 
-      // Additional validation: ensure confidence is reasonable
-      if (confidencePercent > 100) {
-        console.warn(
-          `⚠️  Invalid confidence ${confidencePercent}% > 100%. Normalizing...`,
-        );
-        data.confidence = Math.min(confidencePercent, 100);
-      }
-
-      // 4. Map backend response to app format
-      const predicted_class = data.type?.replace("-horn", " horns") || "horn";
+      const predicted_class = data.type?.replace("-horn", " horns") ?? "horn";
       const mapped = CLASS_MAP[predicted_class] ?? {
         vehicleType: data.title?.replace(" Horn Detected", "") || "Vehicle",
         emoji: data.icon || "🔊",
@@ -306,26 +382,38 @@ class SoundAlertService {
       };
 
       return {
-        predicted_class: predicted_class,
-        confidence: data.confidence / 100, // Backend sends 0-100, we use 0-1
-        all_probabilities: {},
+        predicted_class,
+        confidence: confidencePercent / 100,
+        all_probabilities: data.all_probabilities ?? {},
         ...mapped,
       };
     } catch (error: any) {
-      // Log all available error info
-      console.error("🔴 Axios error status:", error?.response?.status);
-      console.error(
-        "🔴 Axios error data:",
-        JSON.stringify(error?.response?.data),
-      );
-      console.error(
-        "🔴 Axios error headers:",
-        JSON.stringify(error?.response?.headers),
-      );
-      console.error("🔴 Axios request URL:", error?.config?.url);
-      // Clean up temp file on error
-      await FileSystem.deleteAsync(uri, { idempotent: true });
+      console.error("🔴 Error status:", error?.response?.status);
+      console.error("🔴 Error data:", JSON.stringify(error?.response?.data));
+      console.error("🔴 Request URL:", error?.config?.url ?? API_BASE_URL);
+      if (audioUri) {
+        await FileSystem.deleteAsync(audioUri, { idempotent: true }).catch(
+          () => {},
+        );
+      }
       throw error;
+    } finally {
+      // Always release the native audio session
+      this.isRecording = false;
+      if (meteringTimer !== null) clearInterval(meteringTimer);
+      if (rec !== null) {
+        try {
+          await rec.stopAndUnloadAsync();
+        } catch {
+          // ignore — may already be stopped
+        }
+        this.recording = null;
+        const uri = rec.getURI();
+        if (uri)
+          await FileSystem.deleteAsync(uri, { idempotent: true }).catch(
+            () => {},
+          );
+      }
     }
   }
 }
